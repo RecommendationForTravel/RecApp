@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:rectrip/screens/my_page.dart';
-
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:rectrip/screens/feed_page.dart';
 
-void main() {
-  runApp(MyApp());
+import 'package:rectrip/screens/recommendation_flow/1_survey_start_page.dart';
+import 'package:provider/provider.dart';
+import 'package:rectrip/providers/recommendation_provider.dart';
+
+void main() async{
+  // Provider를 앱의 최상위 위젯에 등록합니다.
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ko_KR', null); // <-- 이 줄을 추가하세요
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => RecommendationProvider(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -58,13 +71,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0; // 현재 선택된 탭 인덱스
 
-  // 각 탭에 해당하는 페이지 위젯 (임시로 Placeholder 사용)
   static List<Widget> _widgetOptions = <Widget>[
-    FeedPage(), // 피드 조회 화면
-    PlaceholderWidget(title: '추천'), // 추천 화면
-    PlaceholderWidget(title: '등록'), // 글 작성 화면 (피드 작성 화면-1)
-    PlaceholderWidget(title: '저장'), //저장 여행기 확인
-    MyPageScreen(), // 마이 페이지
+    FeedPage(),
+    SurveyStartPage(), // PlaceholderWidget을 새로운 추천 시작 페이지로 교체
+    PlaceholderWidget(title: '등록'),
+    PlaceholderWidget(title: '저장'),
+    MyPageScreen(),
   ];
 
   void _onItemTapped(int index) {
