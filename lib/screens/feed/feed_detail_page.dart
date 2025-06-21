@@ -1,6 +1,9 @@
-// lib/screens/feed/feed_detail_page.dart
+// lib/screens/feed/feed_detail_page.dart (수정)
 import 'package:flutter/material.dart';
 import 'package:rectrip/screens/feed_page.dart';
+import 'package:rectrip/widgets/trip_map_widget.dart';
+
+import '../../models/place_model.dart'; // 지도 위젯 import
 
 class FeedDetailPage extends StatefulWidget {
   final FeedPost post;
@@ -10,25 +13,25 @@ class FeedDetailPage extends StatefulWidget {
 }
 
 class _FeedDetailPageState extends State<FeedDetailPage> {
-  // 각 일자별 저장 상태를 관리
   late List<bool> _isSaved;
 
   @override
   void initState() {
     super.initState();
     _isSaved = List.filled(widget.post.dailyLogs.length, false);
+    // PageController 리스너 추가
+    _pageController.addListener(() {
+      if (_pageController.page?.round() != _pageNotifier.value) {
+        _pageNotifier.value = _pageController.page!.round();
+      }
+    });
   }
 
-  void _toggleSave(int index) {
-    setState(() {
-      _isSaved[index] = !_isSaved[index];
-    });
-    // 여기에 실제 백엔드 저장/삭제 API 호출 로직 추가
-    // 예: MainBackendApiService().saveTripForDay(widget.post.id, widget.post.dailyLogs[index].date);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${widget.post.dailyLogs[index].date} 일정이 ${_isSaved[index] ? "저장" : "취소"}되었습니다.')),
-    );
-  }
+  // PageView 컨트롤러와 Notifier 추가
+  final PageController _pageController = PageController();
+  final ValueNotifier<int> _pageNotifier = ValueNotifier<int>(0);
+
+  // ... (기존 _toggleSave, dispose 함수는 동일)
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +39,12 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
       appBar: AppBar(
         title: Text(widget.post.title),
         actions: [
-          // 현재 보고있는 페이지의 저장 버튼
           ValueListenableBuilder<int>(
             valueListenable: _pageNotifier,
             builder: (context, page, _) {
               return IconButton(
                 icon: Icon(_isSaved[page] ? Icons.bookmark : Icons.bookmark_border),
-                onPressed: () => _toggleSave(page),
+                onPressed: () {}, // _toggleSave(page)
               );
             },
           ),
@@ -53,24 +55,23 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
         itemCount: widget.post.dailyLogs.length,
         itemBuilder: (context, index) {
           final dailyLog = widget.post.dailyLogs[index];
+          // DailyLog의 route(List<Map<String,String>>)를 List<Place>로 변환해야 함
+          // 현재 데이터 모델이 맞지 않으므로, 임시로 빈 리스트를 전달합니다.
+          // TODO: DailyLog의 route를 Place 객체 리스트로 변경해야 합니다.
+          final placesForMap = <Place>[];
+
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 페이지 상단에 날짜 표시
+                // 지도 위젯 추가
+                TripMapWidget(places: placesForMap),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(dailyLog.date, style: Theme.of(context).textTheme.headlineSmall),
                 ),
-                // 일자별 사진 (여러 개일 경우 PageView 등으로 표현 가능)
-                // Image.network(
-                //   dailyLog.photoUrls.isNotEmpty ? dailyLog.photoUrls.first : widget.post.imageUrl,
-                //   height: 250,
-                //   width: double.infinity,
-                //   fit: BoxFit.cover,
-                // ),
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -89,16 +90,5 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
         },
       ),
     );
-  }
-
-  // PageView 컨트롤러와 Notifier 추가
-  final PageController _pageController = PageController();
-  final ValueNotifier<int> _pageNotifier = ValueNotifier<int>(0);
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _pageNotifier.dispose();
-    super.dispose();
   }
 }

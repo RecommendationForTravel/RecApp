@@ -1,12 +1,13 @@
-// lib/screens/recommendation/recommendation_result_page.dart
+// lib/screens/recommendation/recommendation_result_page.dart (수정)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
+import 'package:rectrip/widgets/trip_map_widget.dart'; // 지도 위젯 import
 
 class RecommendationResultPage extends StatelessWidget {
   final List<Place> finalRoute;
-  final String tripTitle; // 이전 페이지에서 제목을 받아옴
+  final String tripTitle;
 
   const RecommendationResultPage({
     Key? key,
@@ -22,7 +23,8 @@ class RecommendationResultPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Container( /* 지도 UI */ ),
+          // 지도 위젯 추가 (번호 표시 옵션 활성화)
+          TripMapWidget(places: finalRoute, showNumbers: true),
           Expanded(
             child: ListView.builder(
               itemCount: finalRoute.length,
@@ -43,11 +45,8 @@ class RecommendationResultPage extends StatelessWidget {
                 minimumSize: Size(double.infinity, 50),
               ),
               onPressed: () {
-                // Provider를 통해 여행 저장
                 Provider.of<RecommendationProvider>(context, listen: false)
                     .saveFinalTrip(tripTitle, finalRoute);
-
-                // 저장 후, 스택의 모든 페이지를 닫고 메인 화면으로 이동
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
               child: Text('이 여정 저장하기'),

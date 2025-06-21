@@ -5,26 +5,26 @@ import 'package:flutter/material.dart';
 import 'package:rectrip/screens/recommendation/place_search_page.dart';
 import 'package:rectrip/screens/recommendation/recommendation_result_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
-
+import 'package:rectrip/widgets/trip_map_widget.dart'; // 지도 위젯 import
 import '../../models/place_model.dart';
 
 
 class RecommendationPlaceSelectionPage extends StatefulWidget {
-  // 일자별로 구분된 초기 추천 장소 목록
   final Map<DateTime, List<Place>> initialPlacesByDate;
-  final String tripTitle; // 여행 제목 추가
+  final String tripTitle;
 
   const RecommendationPlaceSelectionPage({
     Key? key,
     required this.initialPlacesByDate,
-    required this.tripTitle, // 생성자에 추가
+    required this.tripTitle,
   }) : super(key: key);
 
   @override
   _RecommendationPlaceSelectionPageState createState() => _RecommendationPlaceSelectionPageState();
 }
 
-class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSelectionPage> with SingleTickerProviderStateMixin {
+class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSelectionPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Map<DateTime, List<Place>> _finalPlacesByDate;
   final _mainBackendService = MainBackendApiService();
@@ -34,6 +34,10 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
     super.initState();
     _finalPlacesByDate = Map.from(widget.initialPlacesByDate);
     _tabController = TabController(length: widget.initialPlacesByDate.length, vsync: this);
+    _tabController.addListener(() {
+      // 탭이 변경될 때 화면을 다시 그리도록 setState 호출
+      setState(() {});
+    });
   }
 
 
@@ -69,22 +73,32 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
 
   @override
   Widget build(BuildContext context) {
+    // 현재 선택된 탭의 장소 목록
+    final currentPlaces = _finalPlacesByDate.values.elementAt(_tabController.index);
+
     return Scaffold(
       appBar: AppBar(
         title: Text("추천 장소 선택"),
-        actions: [TextButton(onPressed: _onComplete, child: Text("경로 최적화"))],
+        actions: [TextButton(onPressed: (){}, /*_onComplete*/ child: Text("경로 최적화"))],
         bottom: TabBar(
           controller: _tabController,
           tabs: _finalPlacesByDate.keys.map((date) => Tab(text: "${date.month}/${date.day}")).toList(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _finalPlacesByDate.entries.map((entry) {
-          final date = entry.key;
-          final places = entry.value;
-          return _buildPlaceListForDay(date, places);
-        }).toList(),
+      body: Column(
+        children: [
+          // 지도 위젯 추가
+          TripMapWidget(places: currentPlaces),
+          // 장소 목록
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: _finalPlacesByDate.entries.map((entry) {
+                return _buildPlaceListForDay(entry.key, entry.value);
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }

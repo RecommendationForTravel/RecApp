@@ -49,9 +49,9 @@ class RecommendationService {
     for (int i = 0; i < totalDays; i++) {
       final date = startDate.add(Duration(days: i));
       recommendations[date] = [
-        Place(placeName: '${location}의 명소 ${i+1}', roadAddressName: '추천 주소 ${i+1}-1', x: '127.0', y: '37.5'),
-        Place(placeName: '${theme} 맛집 ${i+1}', roadAddressName: '추천 주소 ${i+1}-2', x: '127.1', y: '37.6'),
-        Place(placeName: '추천 카페 ${i+1}', roadAddressName: '추천 주소 ${i+1}-3', x: '127.2', y: '37.7'),
+        Place(placeName: '${location}의 명소 ${i+1}', roadAddressName: '추천 주소 ${i+1}-1', x: 127.0, y: 37.5),
+        Place(placeName: '${theme} 맛집 ${i+1}', roadAddressName: '추천 주소 ${i+1}-2', x: 127.1, y: 37.6),
+        Place(placeName: '추천 카페 ${i+1}', roadAddressName: '추천 주소 ${i+1}-3', x: 127.2, y: 37.7),
       ];
     }
     return recommendations;
