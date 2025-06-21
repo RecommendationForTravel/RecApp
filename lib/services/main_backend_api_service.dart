@@ -53,10 +53,43 @@ class MainBackendApiService {
     }
     */
 
-    // --- 더미 데이터 반환 ---
+    // --- 수정된 더미 데이터 반환 ---
     return [
-      FeedPost(id: '1', userName: 'aodp', userLocation: '서울 특별시 용산구', imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop', title: '딱밤 여행', dateRange: '2025.05.05 - 2025.05.07', tags: ['#커플', '#낭만', '#성공적']),
-      FeedPost(id: '2', userName: 'flutterdev', userLocation: '부산 광역시 해운대구', imageUrl: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop', title: '해변에서의 휴식', dateRange: '2025.06.10 - 2025.06.12', tags: ['#힐링', '#바다', '#여유']),
+      FeedPost(
+        id: '1',
+        userName: 'aodp',
+        userLocation: '서울 특별시 용산구',
+        title: '낭만 여행',
+        dateRange: '2025.05.05 - 2025.05.06',
+        tags: ['#커플', '#낭만', '#성공적'],
+        dailyLogs: [
+          DailyLog(
+            date: '2025.05.05 (1일차)',
+            route: [{'title': '남산타워', 'details': '케이블카 타고 올라감'}, {'title': '명동교자', 'details': '저녁식사'}],
+            comment: '첫날은 서울의 야경을 즐겼어요. 남산타워에서 본 모습은 정말 잊을 수 없네요!',
+          ),
+          DailyLog(
+            date: '2025.05.06 (2일차)',
+            route: [{'title': '경복궁', 'details': '한복 체험'}, {'title': '인사동 찻집', 'details': '전통차 시음'}],
+            comment: '한복 입고 경복궁을 거니니 시간 여행을 하는 기분이었어요. 너무 예쁜 사진을 많이 남겼습니다.',
+          ),
+        ],
+      ),
+      FeedPost(
+        id: '2',
+        userName: 'flutterdev',
+        userLocation: '부산 광역시 해운대구',
+        title: '해변에서의 휴식',
+        dateRange: '2025.06.10',
+        tags: ['#힐링', '#바다', '#여유'],
+        dailyLogs: [
+          DailyLog(
+            date: '2025.06.10 (1일차)',
+            route: [{'title': '해운대 해수욕장', 'details': '물놀이 및 휴식'}, {'title': '더베이 101', 'details': '야경 감상 및 저녁'}],
+            comment: '오랜만에 바다를 보니 가슴이 뻥 뚫리는 기분! 파도 소리를 들으며 제대로 힐링했습니다.',
+          ),
+        ],
+      ),
     ];
   }
 

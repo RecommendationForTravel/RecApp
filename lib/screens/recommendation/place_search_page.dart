@@ -1,7 +1,7 @@
-// lib/screens/recommendation/place_search_page.dart (신규 파일)
+// lib/screens/recommendation/place_search_page.dart (수정)
 import 'package:flutter/material.dart';
 import 'package:rectrip/models/place_model.dart';
-import 'package:rectrip/services/kakao_api_service.dart';
+import 'package:rectrip/services/naver_api_service.dart'; // kakao_api_service 대신 naver_api_service를 import
 
 class PlaceSearchPage extends StatefulWidget {
   @override
@@ -9,28 +9,31 @@ class PlaceSearchPage extends StatefulWidget {
 }
 
 class _PlaceSearchPageState extends State<PlaceSearchPage> {
-  final _kakaoApiService = KakaoApiService();
+  // 서비스를 NaverApiService로 변경
+  final _naverApiService = NaverApiService();
   final _searchController = TextEditingController();
   List<Place> _searchResults = [];
   bool _isLoading = false;
-  bool _hasError = false;
+  String? _errorMessage; // 에러 메시지를 상태로 관리
 
   void _searchPlaces(String query) async {
     if (query.isEmpty) return;
 
     setState(() {
       _isLoading = true;
-      _hasError = false;
+      _errorMessage = null; // 새로운 검색 시작 시 에러 메시지 초기화
     });
 
     try {
-      final results = await _kakaoApiService.searchByKeyword(query);
+      // naverApiService의 함수를 호출
+      final results = await _naverApiService.searchByKeyword(query);
       setState(() {
         _searchResults = results;
       });
     } catch (e) {
       setState(() {
-        _hasError = true;
+        // 사용자에게 보여줄 에러 메시지 설정
+        _errorMessage = e.toString();
       });
       print(e); // 디버깅을 위한 에러 출력
     } finally {
@@ -48,7 +51,7 @@ class _PlaceSearchPageState extends State<PlaceSearchPage> {
           controller: _searchController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: '장소, 주소 검색',
+            hintText: '장소, 주소 검색 (네이버)', // 힌트 텍스트 변경
             border: InputBorder.none,
           ),
           onSubmitted: _searchPlaces,
@@ -68,11 +71,16 @@ class _PlaceSearchPageState extends State<PlaceSearchPage> {
     if (_isLoading) {
       return Center(child: CircularProgressIndicator());
     }
-    if (_hasError) {
+    // 에러 메시지가 있을 경우 표시
+    if (_errorMessage != null) {
       return Center(
-        child: Text(
-          '오류가 발생했습니다.\nAPI 키를 확인하거나 인터넷 연결을 확인해주세요.',
-          textAlign: TextAlign.center,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            '오류가 발생했습니다.\n$_errorMessage',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.red),
+          ),
         ),
       );
     }

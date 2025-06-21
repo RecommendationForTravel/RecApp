@@ -44,16 +44,33 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
     }
 
     final provider = Provider.of<RecommendationProvider>(context, listen: false);
+
+    // provider의 fetchRecommendations 호출
     provider.fetchRecommendations(
       location: _selectedLocation!,
       startDate: _rangeStart!,
       endDate: _rangeEnd!,
       theme: _selectedTheme!,
     ).then((_) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => RecommendationResultPage(finalRoute: [],)),
-      );
+      // 데이터 로딩이 끝나면, provider에서 데이터를 가져와 PlaceSelectionPage로 전달
+      final initialPlaces = provider.itinerary;
+      if (initialPlaces.isNotEmpty) {
+        Navigator.push( // pushReplacement 대신 push 사용
+          context,
+          MaterialPageRoute(
+            builder: (context) => RecommendationPlaceSelectionPage(
+              initialPlacesByDate: initialPlaces,
+              // 여행 제목을 다음 페이지로 전달
+              tripTitle: "${_selectedLocation!} ${_selectedTheme!} 여행",
+            ),
+          ),
+        );
+      } else {
+        // 데이터가 비어있을 경우 에러 처리
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('추천 데이터를 불러오지 못했습니다.')),
+        );
+      }
     });
   }
 

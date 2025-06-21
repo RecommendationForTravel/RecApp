@@ -1,36 +1,28 @@
 // lib/providers/recommendation_provider.dart
 import 'package:flutter/material.dart';
-import 'package:rectrip/models/recommendation_models.dart';
+import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/services/recommendation_service.dart';
+
+// 저장된 추천 여행 모델
+class SavedTrip {
+  final String title;
+  final List<Place> route;
+  SavedTrip({required this.title, required this.route});
+}
 
 class RecommendationProvider with ChangeNotifier {
   final RecommendationService _service = RecommendationService();
 
-  // DateTime? _selectedDay;
-  // Map<DateTime, List<String>> _events = {};
-  //
-  // DateTime? get selectedDay => _selectedDay;
-  // Map<DateTime, List<String>> get events => _events;
-  //
-  // void setSelectedDay(DateTime day) {
-  //   _selectedDay = day;
-  //   notifyListeners();
-  // }
-  //
-  // void addEvent(DateTime day, String event) {
-  //   if (_events[day] != null) {
-  //     _events[day]!.add(event);
-  //   } else {
-  //     _events[day] = [event];
-  //   }
-  //   notifyListeners();
-  // }
-
-  List<DailyItinerary> _itineraries = [];
+  // 현재 진행중인 추천 데이터
+  Map<DateTime, List<Place>> _itinerary = {};
   bool _isLoading = false;
 
-  List<DailyItinerary> get itineraries => _itineraries;
+  // 최종 저장된 추천 여행 목록
+  List<SavedTrip> _savedTrips = [];
+
+  Map<DateTime, List<Place>> get itinerary => _itinerary;
   bool get isLoading => _isLoading;
+  List<SavedTrip> get savedTrips => _savedTrips;
 
   // 서버로부터 추천 데이터를 가져와 상태를 업데이트
   Future<void> fetchRecommendations({
@@ -42,12 +34,13 @@ class RecommendationProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _itineraries = await _service.getRecommendations(
+      // RecommendationService에서 반환된 맵을 직접 저장
+      _itinerary = (await _service.getRecommendations(
         location: location,
         startDate: startDate,
         endDate: endDate,
         theme: theme,
-      );
+      )).cast<DateTime, List<Place>>();
     } catch (e) {
       print(e);
       // 에러 처리 로직
@@ -57,29 +50,16 @@ class RecommendationProvider with ChangeNotifier {
     }
   }
 
-  // 장소 추가
-  void addPlace(DateTime date, String category, Place place) {
-    final day = _itineraries.firstWhere((it) => it.date == date);
-    if (day.placesByCategory.containsKey(category)) {
-      day.placesByCategory[category]!.add(place);
-    } else {
-      day.placesByCategory[category] = [place];
-    }
-    _service.updateItinerary(action: 'add', date: date, category: category, place: place);
+  // 최종 경로를 저장하는 함수
+  void saveFinalTrip(String title, List<Place> route) {
+    _savedTrips.add(SavedTrip(title: title, route: route));
     notifyListeners();
-  }
-
-  // 장소 삭제
-  void removePlace(DateTime date, String category, Place place) {
-    final day = _itineraries.firstWhere((it) => it.date == date);
-    day.placesByCategory[category]?.remove(place);
-    _service.updateItinerary(action: 'remove', date: date, category: category, place: place);
-    notifyListeners();
+    print("'${title}' 여행이 저장되었습니다.");
   }
 
   // 상태 초기화
   void clear() {
-    _itineraries = [];
+    _itinerary = {};
     notifyListeners();
   }
 }

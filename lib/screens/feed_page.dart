@@ -1,111 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:rectrip/screens/feed/feed_detail_page.dart';
 
+import '../services/main_backend_api_service.dart';
+
+class DailyLog {
+  final String date;
+  final List<Map<String, String>> route; // 예: [{'title': '맛집', 'details': '...'}, ...]
+  //final List<String> photoUrls;
+  final String comment;
+
+  DailyLog({
+    required this.date,
+    required this.route,
+    required this.comment,
+    // required this.photoUrls, // 생성자에서 제거
+  });
+}
+
 // 샘플 데이터 모델
 class FeedPost {
   final String id;
   final String userName;
   final String userLocation;
-  final String imageUrl;
+  //final String imageUrl;
   final String title;
   final String dateRange;
   final List<String> tags;
+  final List<DailyLog> dailyLogs; // 일자별 기록 추가
 
   FeedPost({
     required this.id,
     required this.userName,
     required this.userLocation,
-    required this.imageUrl,
+    //required this.imageUrl,
     required this.title,
     required this.dateRange,
     required this.tags,
+    required this.dailyLogs,
   });
 }
 
 class FeedPage extends StatelessWidget {
-  // 샘플 피드 데이터
-  final List<FeedPost> feedPosts = [
-    FeedPost(
-      id: '1',
-      userName: 'aodp',
-      userLocation: '서울 특별시 용산구',
-      imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop', // 샘플 이미지 URL
-      title: '딱밤 여행',
-      dateRange: '2025.05.05 - 2025.05.07',
-      tags: ['#커플', '#낭만', '#성공적'],
-    ),
-    FeedPost(
-      id: '2',
-      userName: 'flutterdev',
-      userLocation: '부산 광역시 해운대구',
-      imageUrl: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop', // 샘플 이미지 URL
-      title: '해변에서의 휴식',
-      dateRange: '2025.06.10 - 2025.06.12',
-      tags: ['#힐링', '#바다', '#여유'],
-    ),
-    // 더 많은 피드 아이템 추가 가능
-  ];
+  // MainBackendApiService 인스턴스 생성
+  final MainBackendApiService _apiService = MainBackendApiService();
+
+  // ★★★★★ 여기 있던 샘플 데이터(feedPosts 리스트)는 삭제합니다. ★★★★★
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        // AppBar는 동적으로 채울 필요가 크지 않으므로 일단 유지하거나,
+        // FutureBuilder 내부에서 첫 번째 포스트 데이터로 채울 수 있습니다.
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: CircleAvatar( // 사용자 프로필 이미지 (임시)
+          child: CircleAvatar(
             backgroundColor: Colors.grey[300],
-            child: Text(
-                feedPosts.isNotEmpty ? feedPosts[0].userName[0].toUpperCase() : 'U',
-                style: TextStyle(color: Colors.black54)
-            ),
+            child: Icon(Icons.person_outline, color: Colors.black54),
           ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              feedPosts.isNotEmpty ? feedPosts[0].userName : '사용자명',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-            ),
-            Text(
-              feedPosts.isNotEmpty ? feedPosts[0].userLocation : '위치 정보 없음',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
+        title: Text("피드", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
         actions: [
           IconButton(
             icon: Icon(Icons.search, color: Colors.black54),
             onPressed: () {
-              // 검색 기능 구현
+              // 검색 기능 구현 (이전 답변의 필터 모달 호출 로직)
             },
           ),
         ],
         backgroundColor: Colors.white,
-        elevation: 1, // 약간의 그림자로 구분
+        elevation: 1,
       ),
-      body: ListView.builder(
-        itemCount: feedPosts.length,
-        itemBuilder: (context, index) {
-          final post = feedPosts[index];
-          // GestureDetector로 감싸서 탭 이벤트를 감지
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FeedDetailPage(post: post),
-                ),
+      // FutureBuilder를 사용하여 비동기 데이터를 처리
+      body: FutureBuilder<List<FeedPost>>(
+        future: _apiService.getFeeds(), // 데이터를 가져올 Future를 지정
+        builder: (context, snapshot) {
+          // 로딩 중일 때
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          // 에러가 발생했을 때
+          if (snapshot.hasError) {
+            return Center(child: Text("데이터를 불러오는 중 오류가 발생했습니다."));
+          }
+          // 데이터가 없거나 비어있을 때
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text("표시할 피드가 없습니다."));
+          }
+
+          // 데이터 로딩 성공
+          final posts = snapshot.data!;
+          return ListView.builder(
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => FeedDetailPage(post: post),
+                    ),
+                  );
+                },
+                child: FeedItemWidget(post: post),
               );
             },
-            child: FeedItemWidget(post: post),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // 새 게시물 작성 화면으로 이동 (피드 작성 화면-1)
-          //Navigator.push(context, MaterialPageRoute(builder: (context) => FeedDetailPage(post: post)));
+          // 새 게시물 작성 화면으로 이동
         },
         child: Icon(Icons.add),
         backgroundColor: Colors.teal,
@@ -129,7 +135,7 @@ class FeedItemWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.network( // 네트워크 이미지 로드
+          /*Image.network( // 네트워크 이미지 로드
             post.imageUrl,
             height: 200,
             width: double.infinity,
@@ -156,7 +162,7 @@ class FeedItemWidget extends StatelessWidget {
                 ),
               );
             },
-          ),
+          ),*/
           Padding(
             padding: EdgeInsets.all(12.0),
             child: Column(

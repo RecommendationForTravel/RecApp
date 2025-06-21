@@ -1,15 +1,15 @@
 // lib/services/recommendation_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:rectrip/models/recommendation_models.dart';
+import 'package:rectrip/models/place_model.dart';
 import 'package:intl/intl.dart';
 
 class RecommendationService {
   // 실제 백엔드 서버 주소로 변경해야 합니다.
   final String _baseUrl = "https://your-python-server.com/api";
 
-  // 설문조사 결과를 서버로 보내고 추천 결과를 받는 함수
-  Future<List<DailyItinerary>> getRecommendations({
+  // 설문조사 결과를 보내고 일자별 추천 장소 목록을 받는 함수
+  Future<Map<DateTime, List<Place>>> getRecommendations({
     required String location,
     required DateTime startDate,
     required DateTime endDate,
@@ -38,24 +38,23 @@ class RecommendationService {
     */
 
     // ---- Mock 데이터 (서버 개발 전 테스트용) ----
+    print("백엔드로 추천 요청 전송 (시뮬레이션)");
     await Future.delayed(Duration(seconds: 1)); // 통신 시간 흉내
-    return [
-      DailyItinerary(
-        date: DateTime(2025, 5, 5),
-        placesByCategory: {
-          "카페": [Place(id: 'c1', name: '가상 카페 1호점', address: '서울시 강남구')],
-          "명소": [Place(id: 'l1', name: '가상 명소', address: '서울시 강남구')],
-          "식당": [Place(id: 'r1', name: '가상 식당', address: '서울시 강남구')],
-        },
-      ),
-      DailyItinerary(
-        date: DateTime(2025, 5, 6),
-        placesByCategory: {
-          "카페": [Place(id: 'c2', name: '가상 카페 2호점', address: '서울시 강남구')],
-          "숙소": [Place(id: 'h1', name: '가상 호텔', address: '서울시 강남구')],
-        },
-      ),
-    ];
+    print("백엔드로부터 추천 데이터 수신 (시뮬레이션)");
+
+    // 날짜별로 장소 목록을 생성
+    final Map<DateTime, List<Place>> recommendations = {};
+    int totalDays = endDate.difference(startDate).inDays + 1;
+
+    for (int i = 0; i < totalDays; i++) {
+      final date = startDate.add(Duration(days: i));
+      recommendations[date] = [
+        Place(placeName: '${location}의 명소 ${i+1}', roadAddressName: '추천 주소 ${i+1}-1', x: '127.0', y: '37.5'),
+        Place(placeName: '${theme} 맛집 ${i+1}', roadAddressName: '추천 주소 ${i+1}-2', x: '127.1', y: '37.6'),
+        Place(placeName: '추천 카페 ${i+1}', roadAddressName: '추천 주소 ${i+1}-3', x: '127.2', y: '37.7'),
+      ];
+    }
+    return recommendations;
   }
 
   // 장소 변동 사항을 서버에 알리는 함수
@@ -65,7 +64,7 @@ class RecommendationService {
     required String category,
     required Place place,
   }) async {
-    print("백엔드 업데이트: ${action}, ${date}, ${category}, ${place.name}");
+    //print("백엔드 업데이트: ${action}, ${date}, ${category}, ${place.name}");
     // ---- 실제 서버 연동 로직 ----
     /*
     await http.post(

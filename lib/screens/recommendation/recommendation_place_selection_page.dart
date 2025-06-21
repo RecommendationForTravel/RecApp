@@ -8,43 +8,63 @@ import 'package:rectrip/services/main_backend_api_service.dart';
 
 import '../../models/place_model.dart';
 
-class RecommendationPlaceSelectionPage extends StatefulWidget {
-  // 추천 서버로부터 받은 초기 장소 목록
-  final List<Place> initialPlaces;
 
-  const RecommendationPlaceSelectionPage({Key? key, required this.initialPlaces}) : super(key: key);
+class RecommendationPlaceSelectionPage extends StatefulWidget {
+  // 일자별로 구분된 초기 추천 장소 목록
+  final Map<DateTime, List<Place>> initialPlacesByDate;
+  final String tripTitle; // 여행 제목 추가
+
+  const RecommendationPlaceSelectionPage({
+    Key? key,
+    required this.initialPlacesByDate,
+    required this.tripTitle, // 생성자에 추가
+  }) : super(key: key);
 
   @override
-  _RecommendationPlaceSelectionPageState createState() =>
-      _RecommendationPlaceSelectionPageState();
+  _RecommendationPlaceSelectionPageState createState() => _RecommendationPlaceSelectionPageState();
 }
 
-class _RecommendationPlaceSelectionPageState
-    extends State<RecommendationPlaceSelectionPage> {
-  // ... (기존 변수 선언)
-
-  // 모든 장소를 하나의 리스트로 관리
-  late List<Place> _finalPlaces;
+class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSelectionPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late Map<DateTime, List<Place>> _finalPlacesByDate;
   final _mainBackendService = MainBackendApiService();
 
   @override
   void initState() {
     super.initState();
-    // 초기 장소 목록으로 상태 초기화
-    _finalPlaces = List.from(widget.initialPlaces);
+    _finalPlacesByDate = Map.from(widget.initialPlacesByDate);
+    _tabController = TabController(length: widget.initialPlacesByDate.length, vsync: this);
   }
 
-  // "완료" 버튼을 눌렀을 때의 동작
-  void _onComplete() async {
-    // 1. 최종 장소 목록을 메인 백엔드 서버로 보냄
-    final optimizedRoute = await _mainBackendService.getOptimizedRoute(_finalPlaces);
 
-    // 2. 서버가 정해준 경로(순서)대로 최종 결과 화면으로 이동
+  void _onComplete() async {
+    // 현재 활성화된 탭(날짜)의 장소 목록으로 최종 경로 요청
+    final currentTabDate = _finalPlacesByDate.keys.elementAt(_tabController.index);
+    final placesForThisDay = _finalPlacesByDate[currentTabDate]!;
+
+    // 로딩 인디케이터 표시
+    showDialog(context: context, builder: (c) => Center(child: CircularProgressIndicator()));
+
+    final optimizedRoute = await _mainBackendService.getOptimizedRoute(placesForThisDay);
+
+    Navigator.pop(context); // 로딩 인디케이터 닫기
     Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (context) => RecommendationResultPage(finalRoute: optimizedRoute)),
+      MaterialPageRoute(builder: (context) => RecommendationResultPage(finalRoute: optimizedRoute, tripTitle: '',)),
     );
+  }
+
+  // 장소 추가/삭제 로직
+  void _addPlace(DateTime date, Place place) {
+    setState(() {
+      _finalPlacesByDate[date]?.add(place);
+    });
+  }
+
+  void _removePlace(DateTime date, Place place) {
+    setState(() {
+      _finalPlacesByDate[date]?.remove(place);
+    });
   }
 
   @override
@@ -52,64 +72,55 @@ class _RecommendationPlaceSelectionPageState
     return Scaffold(
       appBar: AppBar(
         title: Text("추천 장소 선택"),
-        actions: [
-          TextButton(
-            onPressed: _onComplete, // 완료 버튼에 함수 연결
-            child: Text("완료", style: TextStyle(color: Colors.teal, fontSize: 16)),
-          )
-        ],
+        actions: [TextButton(onPressed: _onComplete, child: Text("경로 최적화"))],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: _finalPlacesByDate.keys.map((date) => Tab(text: "${date.month}/${date.day}")).toList(),
+        ),
       ),
-      body: Column(
-        children: [
-          // TableCalendar 위젯 (기존과 동일)
-          // ...
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.all(16.0),
-              children: [
-                _buildPlaceList(),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () async {
-          // 카카오 API로 장소 검색 후 추가
-          final Place? result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => PlaceSearchPage()),
-          );
-          if (result != null) {
-            setState(() {
-              _finalPlaces.add(result);
-            });
-          }
-        },
+      body: TabBarView(
+        controller: _tabController,
+        children: _finalPlacesByDate.entries.map((entry) {
+          final date = entry.key;
+          final places = entry.value;
+          return _buildPlaceListForDay(date, places);
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildPlaceList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildPlaceListForDay(DateTime date, List<Place> places) {
+    return Stack(
       children: [
-        Text("여행 장소 목록", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ..._finalPlaces.map((place) => ListTile(
-          title: Text(place.placeName),
-          subtitle: Text(place.roadAddressName),
-          trailing: IconButton(
-            icon: Icon(Icons.remove_circle_outline),
-            onPressed: () {
-              setState(() {
-                _finalPlaces.remove(place);
-              });
+        ListView.builder(
+          itemCount: places.length,
+          itemBuilder: (context, index) {
+            final place = places[index];
+            return ListTile(
+              title: Text(place.placeName),
+              subtitle: Text(place.roadAddressName),
+              trailing: IconButton(
+                icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                onPressed: () => _removePlace(date, place),
+              ),
+            );
+          },
+        ),
+        Positioned(
+          bottom: 16, right: 16,
+          child: FloatingActionButton(
+            child: Icon(Icons.add),
+            onPressed: () async {
+              final Place? result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PlaceSearchPage()),
+              );
+              if (result != null) {
+                _addPlace(date, result);
+              }
             },
           ),
-        )).toList(),
-        Divider(),
+        )
       ],
     );
   }

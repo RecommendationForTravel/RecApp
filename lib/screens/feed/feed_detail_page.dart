@@ -1,65 +1,104 @@
-
+// lib/screens/feed/feed_detail_page.dart
 import 'package:flutter/material.dart';
-import 'package:rectrip/screens/feed_page.dart'; // FeedPost 모델을 가져오기 위함
+import 'package:rectrip/screens/feed_page.dart';
 
-class FeedDetailPage extends StatelessWidget {
+class FeedDetailPage extends StatefulWidget {
   final FeedPost post;
-
   const FeedDetailPage({Key? key, required this.post}) : super(key: key);
+  @override
+  _FeedDetailPageState createState() => _FeedDetailPageState();
+}
+
+class _FeedDetailPageState extends State<FeedDetailPage> {
+  // 각 일자별 저장 상태를 관리
+  late List<bool> _isSaved;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSaved = List.filled(widget.post.dailyLogs.length, false);
+  }
+
+  void _toggleSave(int index) {
+    setState(() {
+      _isSaved[index] = !_isSaved[index];
+    });
+    // 여기에 실제 백엔드 저장/삭제 API 호출 로직 추가
+    // 예: MainBackendApiService().saveTripForDay(widget.post.id, widget.post.dailyLogs[index].date);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${widget.post.dailyLogs[index].date} 일정이 ${_isSaved[index] ? "저장" : "취소"}되었습니다.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(post.title),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+        title: Text(widget.post.title),
+        actions: [
+          // 현재 보고있는 페이지의 저장 버튼
+          ValueListenableBuilder<int>(
+            valueListenable: _pageNotifier,
+            builder: (context, page, _) {
+              return IconButton(
+                icon: Icon(_isSaved[page] ? Icons.bookmark : Icons.bookmark_border),
+                onPressed: () => _toggleSave(page),
+              );
+            },
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 지도 이미지 (임시)
-            Container(
-              height: 250,
-              color: Colors.grey[300],
-              child: Center(
-                child: Icon(Icons.map_outlined, size: 100, color: Colors.grey[600]),
-              ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.post.dailyLogs.length,
+        itemBuilder: (context, index) {
+          final dailyLog = widget.post.dailyLogs[index];
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 페이지 상단에 날짜 표시
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(dailyLog.date, style: Theme.of(context).textTheme.headlineSmall),
+                ),
+                // 일자별 사진 (여러 개일 경우 PageView 등으로 표현 가능)
+                // Image.network(
+                //   dailyLog.photoUrls.isNotEmpty ? dailyLog.photoUrls.first : widget.post.imageUrl,
+                //   height: 250,
+                //   width: double.infinity,
+                //   fit: BoxFit.cover,
+                // ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("여행 경로", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      // ... (dailyLog.route를 기반으로 경로 아이템 생성)
+                      SizedBox(height: 20),
+                      Text("후기", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      Text(dailyLog.comment),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("여행 경로", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  // 경로 아이템 (UI 예시에 따라 구성)
-                  _buildRouteItem(Icons.train, "카레 맛집", "서울역 근처", "12000원"),
-                  _buildRouteItem(Icons.coffee, "오션뷰 카페", "해운대 해변", "8000원"),
-                  SizedBox(height: 20),
-                  Text("후기", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 10),
-                  Text("정말 즐거운 여행이었습니다! 특히 카레 맛집은 인생 맛집이었어요. 오션뷰 카페는 경치가 정말 좋아서 시간 가는 줄 몰랐네요. 이 코스 강력 추천합니다!"),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildRouteItem(IconData icon, String title, String subtitle, String price) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.teal),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle),
-        trailing: Text(price),
-      ),
-    );
+  // PageView 컨트롤러와 Notifier 추가
+  final PageController _pageController = PageController();
+  final ValueNotifier<int> _pageNotifier = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _pageNotifier.dispose();
+    super.dispose();
   }
 }
