@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'login_page.dart';
+
 class MyPageScreen extends StatelessWidget {
+
+  void _navigateToPlaceholder(BuildContext context, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PlaceholderScreen(title: title)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,34 +55,19 @@ class MyPageScreen extends StatelessWidget {
             leading: Icon(Icons.edit_outlined, color: Colors.teal),
             title: Text('내 정보 수정'),
             trailing: Icon(Icons.chevron_right),
-            onTap: () {
-              // 내 정보 수정 화면으로 이동
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('내 정보 수정 화면으로 이동 (구현 필요)')),
-              );
-            },
+            onTap: () => _navigateToPlaceholder(context, '내 정보 수정'),
           ),
           ListTile(
             leading: Icon(Icons.article_outlined, color: Colors.teal),
             title: Text('내가 쓴 피드'),
             trailing: Icon(Icons.chevron_right),
-            onTap: () {
-              // 내가 쓴 피드 목록 화면으로 이동
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('내가 쓴 피드 화면으로 이동 (구현 필요)')),
-              );
-            },
+            onTap: () => _navigateToPlaceholder(context, '내가 쓴 피드'),
           ),
           ListTile(
             leading: Icon(Icons.history_outlined, color: Colors.teal),
             title: Text('추천 받은 기록'),
             trailing: Icon(Icons.chevron_right),
-            onTap: () {
-              // 추천 받은 기록 화면으로 이동
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('추천 받은 기록 화면으로 이동 (구현 필요)')),
-              );
-            },
+            onTap: () => _navigateToPlaceholder(context, '추천 받은 기록'),
           ),
           Divider(),
           ListTile(
@@ -96,11 +91,11 @@ class MyPageScreen extends StatelessWidget {
                       TextButton(
                         child: Text('로그아웃', style: TextStyle(color: Colors.redAccent)),
                         onPressed: () {
-                          // 로그아웃 로직 실행
-                          Navigator.of(context).pop(); // 다이얼로그 닫기
-                          // 예: Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('로그아웃 처리 (구현 필요)')),
+                          // 로그인 화면으로 이동하고 이전의 모든 화면을 스택에서 제거
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => LoginPage()),
+                                (Route<dynamic> route) => false,
                           );
                         },
                       ),
@@ -112,6 +107,20 @@ class MyPageScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// 임시 페이지 위젯 (이 부분이 누락되었을 가능성이 있습니다)
+class PlaceholderScreen extends StatelessWidget {
+  final String title;
+  const PlaceholderScreen({Key? key, required this.title}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text(title, style: TextStyle(fontSize: 24))),
     );
   }
 }

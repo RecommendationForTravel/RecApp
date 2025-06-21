@@ -1,10 +1,11 @@
-// lib/screens/recommendation_flow/2_survey_form_page.dart
+// lib/screens/recommendation/survey_form_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
+import 'package:rectrip/screens/recommendation/recommendation_result_page.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '3_recommendation_result_page.dart';
+import 'recommendation_place_selection_page.dart';
 
 class SurveyFormPage extends StatefulWidget {
   @override
@@ -51,7 +52,7 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
     ).then((_) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => RecommendationResultPage()),
+        MaterialPageRoute(builder: (context) => RecommendationResultPage(finalRoute: [],)),
       );
     });
   }

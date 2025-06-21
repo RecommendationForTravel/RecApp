@@ -6,6 +6,26 @@ import 'package:rectrip/services/recommendation_service.dart';
 class RecommendationProvider with ChangeNotifier {
   final RecommendationService _service = RecommendationService();
 
+  // DateTime? _selectedDay;
+  // Map<DateTime, List<String>> _events = {};
+  //
+  // DateTime? get selectedDay => _selectedDay;
+  // Map<DateTime, List<String>> get events => _events;
+  //
+  // void setSelectedDay(DateTime day) {
+  //   _selectedDay = day;
+  //   notifyListeners();
+  // }
+  //
+  // void addEvent(DateTime day, String event) {
+  //   if (_events[day] != null) {
+  //     _events[day]!.add(event);
+  //   } else {
+  //     _events[day] = [event];
+  //   }
+  //   notifyListeners();
+  // }
+
   List<DailyItinerary> _itineraries = [];
   bool _isLoading = false;
 

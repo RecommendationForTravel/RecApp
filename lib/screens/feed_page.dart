@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rectrip/screens/feed/feed_detail_page.dart';
 
 // 샘플 데이터 모델
 class FeedPost {
@@ -87,16 +88,24 @@ class FeedPage extends StatelessWidget {
         itemCount: feedPosts.length,
         itemBuilder: (context, index) {
           final post = feedPosts[index];
-          return FeedItemWidget(post: post);
+          // GestureDetector로 감싸서 탭 이벤트를 감지
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FeedDetailPage(post: post),
+                ),
+              );
+            },
+            child: FeedItemWidget(post: post),
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // 새 게시물 작성 화면으로 이동 (피드 작성 화면-1)
-          // Navigator.push(context, MaterialPageRoute(builder: (context) => NewPostScreen()));
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('새 게시물 작성 화면으로 이동 (구현 필요)')),
-          );
+          //Navigator.push(context, MaterialPageRoute(builder: (context) => FeedDetailPage(post: post)));
         },
         child: Icon(Icons.add),
         backgroundColor: Colors.teal,

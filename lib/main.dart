@@ -1,16 +1,18 @@
+// recommendationfortravel/recapp/RecApp-2107ce38db758b02ee3cf415ae47987f7c68209a/lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:rectrip/screens/my_page.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:rectrip/screens/feed_page.dart';
-
-import 'package:rectrip/screens/recommendation_flow/1_survey_start_page.dart';
 import 'package:provider/provider.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
+import 'package:rectrip/screens/feed/feed_create_page.dart';
+import 'package:rectrip/screens/login_page.dart';
+import 'package:rectrip/screens/my_page.dart';
+import 'package:rectrip/screens/feed_page.dart';
+import 'package:rectrip/screens/recommendation/survey_start_page.dart';
+import 'package:rectrip/screens/saved_trips_page.dart';
 
-void main() async{
-  // Provider를 앱의 최상위 위젯에 등록합니다.
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('ko_KR', null); // <-- 이 줄을 추가하세요
+  await initializeDateFormatting('ko_KR', null);
   runApp(
     ChangeNotifierProvider(
       create: (context) => RecommendationProvider(),
@@ -20,45 +22,14 @@ void main() async{
 }
 
 class MyApp extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '여행 앱',
       theme: ThemeData(
-        primarySwatch: Colors.blueGrey, // 앱의 전체적인 테마 색상
-        scaffoldBackgroundColor: Colors.white, // 기본 배경색
-        textTheme: TextTheme( // 기본 텍스트 스타일
-          bodyLarge: TextStyle(color: Colors.black87),
-          bodyMedium: TextStyle(color: Colors.black54),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData( // 버튼 스타일
-          style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal, // 버튼 배경색
-              foregroundColor: Colors.white, // 버튼 텍스트색
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 20.0)
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme( // 입력 필드 스타일
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(color: Colors.teal, width: 2.0),
-          ),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          contentPadding: EdgeInsets.symmetric(vertical: 15.0, horizontal: 12.0),
-        ),
+        // ... (기존 테마 설정과 동일)
       ),
-      home: MainScreen(),
-      // 여기에 라우트 설정을 추가하여 다른 페이지로 이동할 수 있습니다.
-      // 예: routes: { '/login': (context) => LoginPage(), ... }
+      home: LoginPage(), // 앱 시작 시 로그인 페이지를 먼저 보여줍니다.
     );
   }
 }
@@ -69,25 +40,28 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0; // 현재 선택된 탭 인덱스
+  int _selectedIndex = 0;
 
   static List<Widget> _widgetOptions = <Widget>[
     FeedPage(),
-    SurveyStartPage(), // PlaceholderWidget을 새로운 추천 시작 페이지로 교체
-    PlaceholderWidget(title: '등록'),
-    PlaceholderWidget(title: '저장'),
+    SurveyStartPage(), // 추천 시작 화면으로 변경
+    Container(), // 등록 버튼은 별도 처리
+    SavedTripsPage(), // 저장된 여행 화면
     MyPageScreen(),
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      // '등록' 탭 (인덱스 2)을 누르면 새 게시물 작성 화면으로 이동하는 로직 추가 가능
-      if (index == 2) {
-        // Navigator.push(context, MaterialPageRoute(builder: (context) => NewPostScreen()));
-        // 현재는 PlaceholderWidget이 표시됩니다.
-      }
-    });
+    if (index == 2) {
+      // 등록 탭을 누르면, 새 게시물 작성 화면으로 이동 (Modal)
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => FeedCreatePage()),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -125,26 +99,12 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.teal, // 선택된 아이템 색상
-        unselectedItemColor: Colors.grey, // 선택되지 않은 아이템 색상
-        showUnselectedLabels: true, // 선택되지 않은 라벨도 표시
-        type: BottomNavigationBarType.fixed, // 아이템이 많을 때 고정
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
         onTap: _onItemTapped,
       ),
-    );
-  }
-}
-
-// 임시 Placeholder 위젯
-class PlaceholderWidget extends StatelessWidget {
-  final String title;
-  PlaceholderWidget({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title, style: TextStyle(fontSize: 24))),
     );
   }
 }

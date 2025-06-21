@@ -103,7 +103,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('회원가입 처리중... (구현 필요)')),
                       );
-                      // 예: Navigator.pop(context); // 회원가입 성공 후 이전 화면으로
+                      Navigator.pop(context); // 회원가입 성공 후 이전 화면으로
                     }
                   },
                   child: Text('회원가입'),

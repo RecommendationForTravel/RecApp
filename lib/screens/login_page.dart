@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:rectrip/main.dart';
+import 'package:rectrip/screens/signup_page.dart';
 // 회원가입 페이지를 import 합니다.
 // import 'signup_page.dart'; // SignUpPage 경로에 맞게 수정
 
@@ -69,7 +71,7 @@ class _LoginPageState extends State<LoginPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('로그인 시도... (구현 필요)')),
                       );
-                      // 예: Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScreen()));
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScreen()));
                     }
                   },
                   child: Text('로그인'),
@@ -81,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
               TextButton(
                 onPressed: () {
                   // 회원가입 페이지로 이동
-                  // Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpPage()));
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpPage()));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('회원가입 페이지로 이동 (구현 필요)')),
                   );

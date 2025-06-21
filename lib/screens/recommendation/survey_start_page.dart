@@ -1,8 +1,8 @@
-// lib/screens/recommendation_flow/1_survey_start_page.dart
+// lib/screens/recommendation/survey_start_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
-import '2_survey_form_page.dart';
+import 'survey_form_page.dart';
 
 class SurveyStartPage extends StatelessWidget {
   @override
