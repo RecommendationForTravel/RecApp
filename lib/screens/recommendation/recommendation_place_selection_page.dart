@@ -1,13 +1,10 @@
-// lib/screens/recommendation/recommendation_place_selection_page.dart
-// ... (import 구문)
-import 'package:flutter/cupertino.dart';
+// lib/screens/recommendation/recommendation_place_selection_page.dart (수정)
 import 'package:flutter/material.dart';
+import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/recommendation/place_search_page.dart';
 import 'package:rectrip/screens/recommendation/recommendation_result_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
-import 'package:rectrip/widgets/trip_map_widget.dart'; // 지도 위젯 import
-import '../../models/place_model.dart';
-
+import 'package:rectrip/widgets/trip_map_widget.dart';
 
 class RecommendationPlaceSelectionPage extends StatefulWidget {
   final Map<DateTime, List<Place>> initialPlacesByDate;
@@ -20,10 +17,12 @@ class RecommendationPlaceSelectionPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _RecommendationPlaceSelectionPageState createState() => _RecommendationPlaceSelectionPageState();
+  _RecommendationPlaceSelectionPageState createState() =>
+      _RecommendationPlaceSelectionPageState();
 }
 
-class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSelectionPage>
+class _RecommendationPlaceSelectionPageState
+    extends State<RecommendationPlaceSelectionPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Map<DateTime, List<Place>> _finalPlacesByDate;
@@ -33,29 +32,54 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
   void initState() {
     super.initState();
     _finalPlacesByDate = Map.from(widget.initialPlacesByDate);
-    _tabController = TabController(length: widget.initialPlacesByDate.length, vsync: this);
+    _tabController =
+        TabController(length: widget.initialPlacesByDate.length, vsync: this);
     _tabController.addListener(() {
-      // 탭이 변경될 때 화면을 다시 그리도록 setState 호출
-      setState(() {});
+      if (_tabController.indexIsChanging) {
+        setState(() {});
+      }
     });
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
-  void _onComplete() async {
-    // 현재 활성화된 탭(날짜)의 장소 목록으로 최종 경로 요청
-    final currentTabDate = _finalPlacesByDate.keys.elementAt(_tabController.index);
-    final placesForThisDay = _finalPlacesByDate[currentTabDate]!;
+  // 현재 일자의 경로를 최적화하고 결과 페이지로 이동하는 함수
+  void _optimizeCurrentDayRoute() async {
+    final dayIndex = _tabController.index;
+    final currentDate = _finalPlacesByDate.keys.elementAt(dayIndex);
+    final placesForThisDay = _finalPlacesByDate[currentDate]!;
 
-    // 로딩 인디케이터 표시
-    showDialog(context: context, builder: (c) => Center(child: CircularProgressIndicator()));
-
-    final optimizedRoute = await _mainBackendService.getOptimizedRoute(placesForThisDay);
-
-    Navigator.pop(context); // 로딩 인디케이터 닫기
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => RecommendationResultPage(finalRoute: optimizedRoute, tripTitle: '',)),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => Center(child: CircularProgressIndicator()),
     );
+
+    final optimizedRoute =
+    await _mainBackendService.getOptimizedRoute(placesForThisDay);
+    Navigator.pop(context); // 로딩 인디케이터 닫기
+
+    // 결과 페이지로 이동. 다음 페이지에서 'next' 신호를 보내면 탭 이동
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecommendationResultPage(
+          finalRoute: optimizedRoute,
+          tripTitle: widget.tripTitle,
+          dayIndex: dayIndex,
+          totalDays: _finalPlacesByDate.length,
+        ),
+      ),
+    );
+
+    // 결과 페이지에서 '다음 일자 선택'을 눌렀을 경우
+    if (result == 'next' && dayIndex < _finalPlacesByDate.length - 1) {
+      _tabController.animateTo(dayIndex + 1);
+    }
   }
 
   // 장소 추가/삭제 로직
@@ -73,23 +97,28 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
 
   @override
   Widget build(BuildContext context) {
-    // 현재 선택된 탭의 장소 목록
     final currentPlaces = _finalPlacesByDate.values.elementAt(_tabController.index);
 
     return Scaffold(
       appBar: AppBar(
         title: Text("추천 장소 선택"),
-        actions: [TextButton(onPressed: (){}, /*_onComplete*/ child: Text("경로 최적화"))],
+        actions: [
+          TextButton(
+            onPressed: _optimizeCurrentDayRoute,
+            child: Text("현재일자 경로 최적화"),
+          )
+        ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: _finalPlacesByDate.keys.map((date) => Tab(text: "${date.month}/${date.day}")).toList(),
+          isScrollable: true,
+          tabs: _finalPlacesByDate.keys
+              .map((date) => Tab(text: "${date.month}/${date.day}"))
+              .toList(),
         ),
       ),
       body: Column(
         children: [
-          // 지도 위젯 추가
           TripMapWidget(places: currentPlaces),
-          // 장소 목록
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -103,6 +132,7 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
     );
   }
 
+  // 장소를 추가하는 플로팅 액션 버튼을 포함한 리스트 위젯
   Widget _buildPlaceListForDay(DateTime date, List<Place> places) {
     return Stack(
       children: [
@@ -115,13 +145,18 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
               subtitle: Text(place.roadAddressName),
               trailing: IconButton(
                 icon: Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                onPressed: () => _removePlace(date, place),
+                onPressed: () { // _removePlace(date, place)
+                  setState(() {
+                    _finalPlacesByDate[date]?.remove(place);
+                  });
+                },
               ),
             );
           },
         ),
         Positioned(
-          bottom: 16, right: 16,
+          bottom: 16,
+          right: 16,
           child: FloatingActionButton(
             child: Icon(Icons.add),
             onPressed: () async {
@@ -130,7 +165,9 @@ class _RecommendationPlaceSelectionPageState extends State<RecommendationPlaceSe
                 MaterialPageRoute(builder: (context) => PlaceSearchPage()),
               );
               if (result != null) {
-                _addPlace(date, result);
+                setState(() { // _addPlace(date, result)
+                  _finalPlacesByDate[date]?.add(result);
+                });
               }
             },
           ),

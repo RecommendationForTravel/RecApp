@@ -79,12 +79,12 @@ class SurveyStartPage extends StatelessWidget {
                             trailing: Icon(Icons.chevron_right),
                             onTap: () {
                               // 저장된 결과를 다시 보여주는 페이지로 이동
-                              Navigator.push(context, MaterialPageRoute(
+                              /*Navigator.push(context, MaterialPageRoute(
                                 builder: (context) => RecommendationResultPage(
                                     finalRoute: trip.route,
                                     tripTitle: trip.title
                                 ),
-                              ));
+                              ));*/
                             },
                           ),
                         );

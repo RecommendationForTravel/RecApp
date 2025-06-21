@@ -1,4 +1,6 @@
 // 메인 백엔드 서버와 통신하는 클래스
+import 'dart:math';
+
 import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/feed_page.dart'; // FeedPost 모델
 
@@ -39,11 +41,34 @@ class MainBackendApiService {
     return finalPlaces.reversed.toList();
   }
 
+  // --- 더미 데이터 확장 ---
+  // 무한 스크롤 및 필터링 테스트를 위해 더 많은 데이터를 생성합니다.
+  final List<FeedPost> _allMockPosts = List.generate(30, (index) {
+    final tags = [['#힐링', '#바다'], ['#커플', '#낭만'], ['#맛집', '#도시'], ['#가족', '#자연']];
+    final selectedTags = tags[index % tags.length];
+    return FeedPost(
+      id: '${index + 1}',
+      userName: '여행자${index + 1}',
+      userLocation: '대한민국 어딘가',
+      title: '${selectedTags.join(' ')} 여행 No.${index + 1}',
+      dateRange: '2025.07.${(index % 30) + 1} - 2025.07.${(index % 30) + 3}',
+      tags: selectedTags,
+      dailyLogs: [
+        DailyLog(
+          date: '2025.07.${(index % 30) + 1}',
+          route: [],
+          comment: '여행 ${index + 1}일차 상세 코멘트입니다. 즐거운 시간을 보냈습니다!',
+        )
+      ],
+    );
+  });
+
   // 피드 목록을 서버에서 가져옵니다.
-  Future<List<FeedPost>> getFeeds() async {
+  Future<List<FeedPost>> getFeeds({int page = 1, int limit = 5, String? tag}) async {
+
     /*
-    // ===== 실제 서버 연동 시 주석 해제 =====
-    final url = Uri.parse('YOUR_MAIN_BACKEND_URL/feeds');
+    // ===== 실제 서버 연동 시에는 아래와 같은 형태로 API를 호출하게 됩니다 =====
+    final url = Uri.parse('YOUR_MAIN_BACKEND_URL/feeds?page=$page&limit=$limit&tag=${tag ?? ''}');
     final response = await http.get(url);
     if (response.statusCode == 200) {
         // ... JSON 파싱 로직 ...
@@ -53,44 +78,30 @@ class MainBackendApiService {
     }
     */
 
-    // --- 수정된 더미 데이터 반환 ---
-    return [
-      FeedPost(
-        id: '1',
-        userName: 'aodp',
-        userLocation: '서울 특별시 용산구',
-        title: '낭만 여행',
-        dateRange: '2025.05.05 - 2025.05.06',
-        tags: ['#커플', '#낭만', '#성공적'],
-        dailyLogs: [
-          DailyLog(
-            date: '2025.05.05 (1일차)',
-            route: [{'title': '남산타워', 'details': '케이블카 타고 올라감'}, {'title': '명동교자', 'details': '저녁식사'}],
-            comment: '첫날은 서울의 야경을 즐겼어요. 남산타워에서 본 모습은 정말 잊을 수 없네요!',
-          ),
-          DailyLog(
-            date: '2025.05.06 (2일차)',
-            route: [{'title': '경복궁', 'details': '한복 체험'}, {'title': '인사동 찻집', 'details': '전통차 시음'}],
-            comment: '한복 입고 경복궁을 거니니 시간 여행을 하는 기분이었어요. 너무 예쁜 사진을 많이 남겼습니다.',
-          ),
-        ],
-      ),
-      FeedPost(
-        id: '2',
-        userName: 'flutterdev',
-        userLocation: '부산 광역시 해운대구',
-        title: '해변에서의 휴식',
-        dateRange: '2025.06.10',
-        tags: ['#힐링', '#바다', '#여유'],
-        dailyLogs: [
-          DailyLog(
-            date: '2025.06.10 (1일차)',
-            route: [{'title': '해운대 해수욕장', 'details': '물놀이 및 휴식'}, {'title': '더베이 101', 'details': '야경 감상 및 저녁'}],
-            comment: '오랜만에 바다를 보니 가슴이 뻥 뚫리는 기분! 파도 소리를 들으며 제대로 힐링했습니다.',
-          ),
-        ],
-      ),
-    ];
+    // --- 더미 데이터로 페이징 및 필터링 시뮬레이션 ---
+    print("피드 요청: page=$page, limit=$limit, tag=${tag ?? '없음'}");
+    await Future.delayed(Duration(milliseconds: 700)); // 네트워크 딜레이 흉내
+
+    // 1. 태그 필터링
+    final List<FeedPost> filteredPosts = tag == null
+        ? _allMockPosts
+        : _allMockPosts.where((post) => post.tags.contains(tag)).toList();
+
+    // 2. 페이징
+    final startIndex = (page - 1) * limit;
+    if (startIndex >= filteredPosts.length) {
+      return []; // 더 이상 데이터가 없으면 빈 리스트 반환
+    }
+
+    final endIndex = min(startIndex + limit, filteredPosts.length);
+
+    return filteredPosts.sublist(startIndex, endIndex);
+  }
+
+  // 사용 가능한 전체 태그 목록을 제공하는 함수 (UI에서 사용)
+  Future<List<String>> getAvailableTags() async {
+    await Future.delayed(Duration(milliseconds: 200));
+    return ['#힐링', '#바다', '#커플', '#낭만', '#맛집', '#도시', '#가족', '#자연'].toSet().toList();
   }
 
   // 작성된 피드를 서버로 전송합니다.
