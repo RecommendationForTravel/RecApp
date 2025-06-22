@@ -1,27 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:rectrip/models/place_model.dart';
+import 'package:rectrip/screens/recommendation/place_search_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
+import 'package:rectrip/services/tag_service.dart';
 
 // 일자별 폼 데이터를 관리하기 위한 UI용 클래스
 class DailyLogForm {
   final DateTime date;
-  final TextEditingController placeController;
+  Place? selectedPlace; // 네이버 검색을 통해 선택된 장소 정보
   final TextEditingController commentController;
   final TextEditingController costController;
-  final TextEditingController regionController; // 지역 입력을 위한 컨트롤러
-  final TextEditingController latitudeController; // 위도 입력을 위한 컨트롤러
-  final TextEditingController longitudeController; // 경도 입력을 위한 컨트롤러
   String? selectedTransportation;
-  String? selectedCategory; // 선택된 장소 카테고리
+  String? selectedCategory; // 장소 카테고리
 
   DailyLogForm({required this.date})
-      : placeController = TextEditingController(),
-        commentController = TextEditingController(),
-        costController = TextEditingController(),
-        regionController = TextEditingController(),
-        latitudeController = TextEditingController(),
-        longitudeController = TextEditingController();
+      : commentController = TextEditingController(),
+        costController = TextEditingController();
 }
 
 class FeedCreatePage extends StatefulWidget {
@@ -34,33 +30,40 @@ class FeedCreatePage extends StatefulWidget {
 class _FeedCreatePageState extends State<FeedCreatePage> {
   final _apiService = MainBackendApiService();
   final _titleController = TextEditingController();
-  final _tagsController = TextEditingController(); // 전체 게시글 태그 컨트롤러
 
   DateTimeRange? _travelDate;
   List<DailyLogForm> _dailyForms = [];
   bool _isLoading = false;
 
-  // 백엔드 enum과 동일한 목록
-  final List<String> _transportationOptions = [
-    'BUS', 'SUBWAY', 'TAXI', 'CAR', 'WALK', 'BICYCLE'
-  ];
+  final Set<String> _selectedPostTags = {};
+  List<String> _availableTags = [];
+
+  final List<String> _transportationOptions = ['버스', '지하철', '택시', '자차운전', '도보', '자전거'];
   final List<String> _placeCategoryOptions = [
-    'CAFE', 'RESTAURANT', 'ACCOMMODATION', 'TOURIST_ATTRACTION', 'PARK',
-    'MUSEUM', 'SHOPPING', 'ENTERTAINMENT', 'HISTORICAL_SITE', 'BEACH',
-    'MOUNTAIN', 'TEMPLE', 'ETC'
+    '카페', '음식점', '숙박', '관광명소', '공원',
+    '박물관', '쇼핑', '놀거리', '역사', '바다',
+    '산', '절', '기타'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableTags();
+  }
+
+  Future<void> _loadAvailableTags() async {
+    final tags = await TagService.loadTags();
+    if (mounted) {
+      setState(() => _availableTags = tags);
+    }
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _tagsController.dispose();
     for (var form in _dailyForms) {
-      form.placeController.dispose();
       form.commentController.dispose();
       form.costController.dispose();
-      form.regionController.dispose();
-      form.latitudeController.dispose();
-      form.longitudeController.dispose();
     }
     super.dispose();
   }
@@ -71,7 +74,6 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
       initialDateRange: _travelDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      helpText: '여행 기간을 선택하세요',
     );
     if (picked != null) {
       setState(() {
@@ -91,7 +93,6 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
     }
   }
 
-  // 게시물 저장 로직
   Future<void> _submitPost() async {
     if (_titleController.text.isEmpty || _travelDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,9 +103,7 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
 
     setState(() => _isLoading = true);
 
-    // --- UI 데이터를 백엔드 PublishDto 구조에 맞게 매핑 ---
-    final List<String> allTags = _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-
+    // --- 백엔드 PublishDto 구조에 맞게 매핑 (placeTagPairList 수정) ---
     final Map<String, dynamic> postData = {
       "title": _titleController.text,
       "comment": _dailyForms.map((form) => form.commentController.text).toList(),
@@ -113,23 +112,23 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
         "endDate": DateFormat('yyyy-MM-dd').format(_travelDate!.end)
       },
       "visitDateList": _dailyForms.map((form) => DateFormat('yyyy-MM-dd').format(form.date)).toList(),
-      "placeList": _dailyForms.map((form) => form.placeController.text).toList(),
+      "placeList": _dailyForms.map((form) => form.selectedPlace?.placeName ?? '').toList(),
       "cost": _dailyForms.map((form) => int.tryParse(form.costController.text) ?? 0).toList(),
       "transportationList": _dailyForms.map((form) => form.selectedTransportation ?? 'ETC').toList(),
-      // --- 새로 추가된 필드 매핑 ---
       "placeLocationList": _dailyForms.map((form) => {
-        "latitude": double.tryParse(form.latitudeController.text) ?? 0.0,
-        "longitude": double.tryParse(form.longitudeController.text) ?? 0.0,
+        "latitude": form.selectedPlace?.y ?? 0.0,
+        "longitude": form.selectedPlace?.x ?? 0.0,
       }).toList(),
       "placeCategoryList": _dailyForms.map((form) => form.selectedCategory ?? 'ETC').toList(),
-      // 백엔드가 요구하는 TagDto 형식 ({"name": "태그명"})으로 변환
-      "placeTagPairList": allTags.map((tag) => {"name": tag}).toList(),
-      // 백엔드가 요구하는 Region 형식 ({"area1": "지역명", ...})으로 변환
-      "regionList": _dailyForms.map((form) => {
-        "area1": form.regionController.text, // 예시로 area1에만 값을 넣음
-        "area2": null,
+      // 백엔드 TagDto 형식 {"place": null, "tag": "태그명"}으로 변환
+      "placeTagPairList": _selectedPostTags.map((tag) => {"place": null, "tag": tag}).toList(),
+      "regionList": _dailyForms.map((form) {
+        final address = form.selectedPlace?.roadAddressName.split(' ');
+        return {
+          "area1": address != null && address.isNotEmpty ? address[0] : null,
+          "area2": address != null && address.length > 1 ? address[1] : null,
+        };
       }).toList(),
-      // 사진은 현재 지원하지 않으므로 빈 리스트 전송
       "placePhotoUrlPairList": [],
     };
 
@@ -139,16 +138,80 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
 
     if (mounted) {
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('게시물이 성공적으로 등록되었습니다!')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('게시물이 등록되었습니다!')));
         Navigator.of(context).pop(true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('게시물 등록에 실패했습니다. 입력값을 확인해주세요.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('게시물 등록에 실패했습니다.')));
       }
     }
+  }
+
+  Future<void> _searchAndSetPlace(DailyLogForm form) async {
+    final Place? result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PlaceSearchPage()),
+    );
+    if (result != null) {
+      setState(() => form.selectedPlace = result);
+    }
+  }
+
+  // --- 태그 선택 UI 수정: 팝업(Dialog)으로 변경 ---
+  Future<void> _showTagSelectionDialog() async {
+    // 임시로 선택 상태를 관리할 Set
+    final Set<String> tempSelectedTags = Set.from(_selectedPostTags);
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('태그 선택'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setDialogState) {
+              return SingleChildScrollView(
+                child: _availableTags.isEmpty
+                    ? const Center(child: Text("태그 로딩 중..."))
+                    : Wrap(
+                  spacing: 8.0,
+                  children: _availableTags.map((tag) {
+                    final isSelected = tempSelectedTags.contains(tag);
+                    return FilterChip(
+                      label: Text(tag),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setDialogState(() {
+                          if (selected) {
+                            tempSelectedTags.add(tag);
+                          } else {
+                            tempSelectedTags.remove(tag);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              child: const Text('취소'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            TextButton(
+              child: const Text('선택 완료'),
+              onPressed: () {
+                setState(() {
+                  _selectedPostTags.clear();
+                  _selectedPostTags.addAll(tempSelectedTags);
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -170,15 +233,7 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
         children: [
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: "제목"),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _tagsController,
-            decoration: const InputDecoration(
-              labelText: "태그",
-              hintText: "쉼표(,)로 구분하여 입력 (예: 힐링, 맛집)",
-            ),
+            decoration: const InputDecoration(labelText: "제목", border: OutlineInputBorder()),
           ),
           const SizedBox(height: 20),
           OutlinedButton.icon(
@@ -188,6 +243,24 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
                 : "${DateFormat('yyyy.MM.dd').format(_travelDate!.start)} - ${DateFormat('yyyy.MM.dd').format(_travelDate!.end)}"),
             onPressed: () => _selectDateRange(context),
           ),
+          const SizedBox(height: 20),
+
+          // --- 태그 선택 UI를 버튼으로 변경 ---
+          OutlinedButton.icon(
+            icon: const Icon(Icons.tag),
+            label: const Text("태그 선택"),
+            onPressed: _showTagSelectionDialog,
+          ),
+          // 선택된 태그를 보여주는 부분
+          if (_selectedPostTags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Wrap(
+                spacing: 8.0,
+                children: _selectedPostTags.map((tag) => Chip(label: Text(tag))).toList(),
+              ),
+            ),
+
           const Divider(height: 40),
           if (_dailyForms.isNotEmpty)
             ..._dailyForms.map((form) => _buildDailyLogForm(form)).toList(),
@@ -196,8 +269,8 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
     );
   }
 
-  // 일자별 입력 폼 위젯
   Widget _buildDailyLogForm(DailyLogForm form) {
+    // ... 기존 _buildDailyLogForm 위젯 코드는 변경 없음 ...
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 24),
@@ -211,45 +284,24 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: form.placeController,
-              decoration: const InputDecoration(labelText: "방문 장소"),
+            const Text("방문 장소", style: TextStyle(color: Colors.grey)),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(form.selectedPlace?.placeName ?? "장소를 검색해주세요"),
+              subtitle: Text(form.selectedPlace?.roadAddressName ?? ""),
+              trailing: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => _searchAndSetPlace(form),
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: form.selectedCategory,
               decoration: const InputDecoration(labelText: "장소 카테고리"),
-              hint: const Text("선택"),
-              items: _placeCategoryOptions.map((String value) => DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              )).toList(),
-              onChanged: (String? newValue) => setState(() => form.selectedCategory = newValue),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: form.regionController,
-              decoration: const InputDecoration(labelText: "지역 (예: 서울시 강남구)"),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: form.latitudeController,
-                    decoration: const InputDecoration(labelText: "위도"),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: form.longitudeController,
-                    decoration: const InputDecoration(labelText: "경도"),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  ),
-                ),
-              ],
+              items: _placeCategoryOptions
+                  .map((val) => DropdownMenuItem<String>(value: val, child: Text(val)))
+                  .toList(),
+              onChanged: (val) => setState(() => form.selectedCategory = val),
             ),
             const SizedBox(height: 12),
             Row(
@@ -259,7 +311,6 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
                     controller: form.costController,
                     decoration: const InputDecoration(labelText: "비용 (원)"),
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -267,12 +318,10 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
                   child: DropdownButtonFormField<String>(
                     value: form.selectedTransportation,
                     decoration: const InputDecoration(labelText: "교통수단"),
-                    hint: const Text("선택"),
-                    items: _transportationOptions.map((String value) => DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    )).toList(),
-                    onChanged: (String? newValue) => setState(() => form.selectedTransportation = newValue),
+                    items: _transportationOptions
+                        .map((val) => DropdownMenuItem<String>(value: val, child: Text(val)))
+                        .toList(),
+                    onChanged: (val) => setState(() => form.selectedTransportation = val),
                   ),
                 ),
               ],

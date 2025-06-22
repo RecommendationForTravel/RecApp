@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
 import 'package:rectrip/screens/recommendation/recommendation_result_page.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../services/tag_service.dart';
 import 'recommendation_place_selection_page.dart';
 
 class SurveyFormPage extends StatefulWidget {
@@ -28,7 +29,24 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
     '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'
   ];
 
-  final List<String> _themes = ['친구와 함께', '가족과 함께', '연인과 함께', '혼자서'];
+  // 중복 선택을 위한 Set
+  final Set<String> _selectedSurveyTags = {};
+  // CSV에서 불러온 태그 목록을 저장할 리스트
+  List<String> _availableTags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // 페이지가 시작될 때 태그를 미리 불러옵니다.
+    _loadAvailableTags();
+  }
+
+  Future<void> _loadAvailableTags() async {
+    final tags = await TagService.loadTags();
+    setState(() {
+      _availableTags = tags;
+    });
+  }
 
   // 날짜 선택 로직 수정
   void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
@@ -124,21 +142,30 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
             ),
             SizedBox(height: 24),
 
-            Text('누구와 함께 여행가시나요?', style: Theme.of(context).textTheme.titleLarge),
-            SizedBox(height: 8),
-            Wrap(
+            Text('어떤 테마의 여행을 원하시나요? (중복 선택 가능)', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            _availableTags.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : Wrap(
               spacing: 8.0,
-              children: _themes.map((theme) => ChoiceChip(
-                label: Text(theme),
-                selected: _selectedTheme == theme,
-                onSelected: (selected) {
-                  setState(() => _selectedTheme = selected ? theme : null);
-                },
-                selectedColor: Colors.teal,
-                labelStyle: TextStyle(color: _selectedTheme == theme ? Colors.white : Colors.black),
-              )).toList(),
+              children: _availableTags.map((tag) {
+                final isSelected = _selectedSurveyTags.contains(tag);
+                return FilterChip(
+                  label: Text(tag),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedSurveyTags.add(tag);
+                      } else {
+                        _selectedSurveyTags.remove(tag);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
             ),
-            SizedBox(height: 40),
+            const SizedBox(height: 40),
 
             ElevatedButton(
               onPressed: _submitSurvey,

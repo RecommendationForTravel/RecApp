@@ -1,37 +1,37 @@
-// lib/screens/feed_page.dart (수정)
 import 'package:flutter/material.dart';
+import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/feed/feed_detail_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
+import 'package:intl/intl.dart';
 
-// --- 데이터 모델 정의 (fromJson 생성자 추가) ---
+import '../services/tag_service.dart';
+
+// --- 데이터 모델 정의 (백엔드 DTO에 맞게 수정) ---
 class DailyLog {
   final String date;
-  final List<Map<String, String>> route;
+  final String placeName;
   final String comment;
+  final int cost;
+  final String transportation;
+  final Place location; // 지도 표시를 위한 위치 정보
 
-  DailyLog({required this.date, required this.route, required this.comment});
-
-  // 상세 정보 JSON으로부터 DailyLog 객체를 생성하는 factory 생성자
-  factory DailyLog.fromJson(Map<String, dynamic> json) {
-    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
-    return DailyLog(
-      date: json['date'] ?? '날짜 정보 없음',
-      route: (json['route'] as List<dynamic>?)
-          ?.map((r) => Map<String, String>.from(r))
-          .toList() ??
-          [],
-      comment: json['comment'] ?? '',
-    );
-  }
+  DailyLog({
+    required this.date,
+    required this.placeName,
+    required this.comment,
+    required this.cost,
+    required this.transportation,
+    required this.location,
+  });
 }
 
 class FeedPost {
-  final int id; // 백엔드 ID 타입이 정수형일 가능성이 높음
+  final int id;
   final String userName;
   final String title;
   final String dateRange;
   final List<String> tags;
-  List<DailyLog> dailyLogs; // 상세 정보는 나중에 채워질 수 있도록 late가 아닌 일반 변수로
+  List<DailyLog> dailyLogs; // 상세 정보는 나중에 채워짐
 
   FeedPost({
     required this.id,
@@ -42,39 +42,67 @@ class FeedPost {
     required this.dailyLogs,
   });
 
-  // 목록용 JSON(ArticleDto)으로부터 FeedPost 객체를 생성
+  // --- 목록용 fromJson 생성자 수정 (핵심 수정 부분) ---
   factory FeedPost.fromJson(Map<String, dynamic> json) {
-    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
+    // 서버에서 받은 값이 null일 경우를 대비해 기본값을 설정하여 안정성을 높입니다.
+    String startDate = json['startDay']?.toString() ?? '';
+    String endDate = json['endDay']?.toString() ?? '';
+    String dateRange = (startDate.isEmpty && endDate.isEmpty) ? '기간 정보 없음' : "$startDate - $endDate";
+
+    // tagList가 null이거나, 리스트 내에 null 요소가 있어도 오류가 발생하지 않도록 안전하게 파싱합니다.
+    List<String> tags = (json['tagList'] as List<dynamic>? ?? [])
+        .map((tag) => tag?.toString() ?? '') // 각 태그가 null이면 빈 문자열로 변환
+        .where((tag) => tag.isNotEmpty) // 빈 태그는 최종 목록에서 제거
+        .toList();
+
     return FeedPost(
       id: json['articleId'] ?? 0,
-      userName: json['author'] ?? '작성자 정보 없음',
+      userName: json['username'] ?? '사용자',
       title: json['title'] ?? '제목 없음',
-      dateRange:
-      "${json['startDate'] ?? ''} - ${json['endDate'] ?? ''}",
-      tags: List<String>.from(json['tags'] ?? []),
-      dailyLogs: [], // 목록에서는 상세 정보가 없으므로 빈 리스트로 초기화
+      dateRange: dateRange,
+      tags: tags,
+      dailyLogs: [],
     );
   }
 
-  // 상세정보용 JSON(ArticleDetailDto)으로부터 FeedPost 객체를 생성
+  // 상세정보용 ArticleDetailDto로부터 객체 생성
   factory FeedPost.fromDetailJson(Map<String, dynamic> json) {
-    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
+    List<DailyLog> logs = [];
+    final visitDates = List<String>.from(json['visitDateList'] ?? []);
+    final placeNames = List<String>.from(json['placeList'] ?? []);
+    final comments = List<String>.from(json['comment'] ?? []);
+    final costs = List<int>.from(json['cost'] ?? []);
+    final transportations = List<String>.from(json['transportationList'] ?? []);
+    final locations = List<Map<String,dynamic>>.from(json['placeLocationList'] ?? []);
+
+    for (int i = 0; i < visitDates.length; i++) {
+      logs.add(DailyLog(
+        date: visitDates[i],
+        placeName: placeNames.length > i ? placeNames[i] : '장소 정보 없음',
+        comment: comments.length > i ? comments[i] : '',
+        cost: costs.length > i ? costs[i] : 0,
+        transportation: transportations.length > i ? transportations[i] : 'ETC',
+        location: Place(
+          placeName: placeNames.length > i ? placeNames[i] : '장소 정보 없음',
+          roadAddressName: '',
+          x: (locations.length > i ? locations[i]['longitude'] : 0.0) as double,
+          y: (locations.length > i ? locations[i]['latitude'] : 0.0) as double,
+        ),
+      ));
+    }
+
     return FeedPost(
       id: json['articleId'] ?? 0,
-      userName: json['author'] ?? '작성자 정보 없음',
+      userName: json['author'] ?? '사용자',
       title: json['title'] ?? '제목 없음',
-      dateRange:
-      "${json['startDate'] ?? ''} - ${json['endDate'] ?? ''}",
-      tags: List<String>.from(json['tags'] ?? []),
-      dailyLogs: (json['dailyLogs'] as List<dynamic>?)
-          ?.map((logJson) => DailyLog.fromJson(logJson))
-          .toList() ??
-          [],
+      dateRange: "${json['travelDate']?['startDate'] ?? ''} - ${json['travelDate']?['endDate'] ?? ''}",
+      tags: (json['placeTagPairList'] as List<dynamic>?)?.map((tag) => tag['name'] as String).toList() ?? [],
+      dailyLogs: logs,
     );
   }
 }
-// --- 데이터 모델 정의 끝 ---
 
+// --- UI ---
 class FeedPage extends StatefulWidget {
   @override
   _FeedPageState createState() => _FeedPageState();
@@ -84,10 +112,11 @@ class _FeedPageState extends State<FeedPage> {
   final MainBackendApiService _apiService = MainBackendApiService();
   final ScrollController _scrollController = ScrollController();
 
-  final List<FeedPost> _posts = [];
-  int _currentPage = 0; // Spring Page는 0부터 시작
+  List<FeedPost> _posts = [];
+  int _currentPage = 0;
   bool _isLoading = false;
   bool _hasMore = true;
+  List<String> _selectedTags = [];
 
   @override
   void initState() {
@@ -101,32 +130,27 @@ class _FeedPageState extends State<FeedPage> {
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   Future<void> _fetchFeeds() async {
     if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
-      final newPosts = await _apiService.getFeeds(page: _currentPage);
+      List<FeedPost> newPosts;
+      if (_selectedTags.isEmpty) {
+        newPosts = await _apiService.getFeeds(page: _currentPage);
+      } else {
+        newPosts = await _apiService.getFeedsByTag(tags: _selectedTags, page: _currentPage);
+      }
+
       setState(() {
-        if (newPosts.isNotEmpty) {
-          _posts.addAll(newPosts);
-          _currentPage++;
-        } else {
-          _hasMore = false;
-        }
+        _posts.addAll(newPosts);
+        _currentPage++;
+        if (newPosts.length < 10) _hasMore = false;
         _isLoading = false;
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      print("피드 로딩 중 에러: $e");
     }
   }
 
@@ -135,23 +159,79 @@ class _FeedPageState extends State<FeedPage> {
       _posts.clear();
       _currentPage = 0;
       _hasMore = true;
+      _isLoading = false;
     });
     await _fetchFeeds();
+  }
+
+// --- 태그 필터 모달 표시 함수 수정 ---
+  void _showTagFilterModal() async {
+    // TagService를 통해 CSV 파일에서 태그 목록을 비동기적으로 불러옵니다.
+    final allTags = await TagService.loadTags();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("태그로 검색", style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 8.0,
+                      children: allTags.map((tag) {
+                        // 현재 선택된 태그인지 확인
+                        final isSelected = _selectedTags.contains(tag);
+                        return FilterChip(
+                          label: Text(tag),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            // 단일 선택 로직: 하나를 선택하면 나머지는 선택 해제됨
+                            setModalState(() {
+                              if (selected) {
+                                _selectedTags = [tag];
+                              } else {
+                                _selectedTags = [];
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _refresh(); // 선택된 태그로 새로고침
+                    },
+                    child: const Text('선택 완료'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("피드"),
-      ),
+      appBar: AppBar(title: Text("피드"), actions: [
+        IconButton(icon: Icon(Icons.search), onPressed: _showTagFilterModal)
+      ]),
       body: RefreshIndicator(
         onRefresh: _refresh,
-        child: _posts.isEmpty && _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : _posts.isEmpty && !_isLoading
-            ? Center(child: Text("표시할 피드가 없습니다."))
-            : ListView.builder(
+        child: ListView.builder(
           controller: _scrollController,
           itemCount: _posts.length + (_hasMore ? 1 : 0),
           itemBuilder: (context, index) {
@@ -160,16 +240,12 @@ class _FeedPageState extends State<FeedPage> {
               return GestureDetector(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => FeedDetailPage(postSummary: post)),
+                  MaterialPageRoute(builder: (context) => FeedDetailPage(postId: post.id, postTitle: post.title)),
                 ),
                 child: FeedItemWidget(post: post),
               );
-            } else {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32.0),
-                child: Center(child: CircularProgressIndicator()),
-              );
             }
+            return _hasMore ? Center(child: CircularProgressIndicator()) : SizedBox();
           },
         ),
       ),
@@ -177,7 +253,6 @@ class _FeedPageState extends State<FeedPage> {
   }
 }
 
-// 피드 아이템 위젯 (이미지 관련 코드 없음)
 class FeedItemWidget extends StatelessWidget {
   final FeedPost post;
   const FeedItemWidget({Key? key, required this.post}) : super(key: key);
@@ -185,38 +260,18 @@ class FeedItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      elevation: 3.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              post.title,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            Text(post.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
-                SizedBox(width: 4),
-                Text(post.userName, style: TextStyle(color: Colors.grey[600])),
-              ],
-            ),
-            SizedBox(height: 4),
-            Text(post.dateRange, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            SizedBox(height: 10),
-            Wrap(
-              spacing: 6.0,
-              children: post.tags.map((tag) => Chip(
-                label: Text(tag, style: TextStyle(fontSize: 12)),
-                backgroundColor: Colors.teal.withOpacity(0.1),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              )).toList(),
-            ),
+            Text('작성자: ${post.userName}'),
+            Text('기간: ${post.dateRange}'),
+            SizedBox(height: 8),
+            Wrap(spacing: 6, children: post.tags.map((tag) => Chip(label: Text(tag))).toList()),
           ],
         ),
       ),

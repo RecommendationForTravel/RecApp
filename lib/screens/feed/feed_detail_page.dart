@@ -1,16 +1,14 @@
 // lib/screens/feed/feed_detail_page.dart (수정)
 import 'package:flutter/material.dart';
-import 'package:rectrip/screens/feed_page.dart'; // FeedPost, DailyLog 모델
+import 'package:rectrip/screens/feed_page.dart'; // DailyLog 모델 사용
 import 'package:rectrip/services/main_backend_api_service.dart';
 import 'package:rectrip/widgets/trip_map_widget.dart';
 
-import '../../models/place_model.dart'; // 지도 위젯
-
 class FeedDetailPage extends StatefulWidget {
-  // 목록에서 받은 요약 정보
-  final FeedPost postSummary;
+  final int postId;
+  final String postTitle;
 
-  const FeedDetailPage({Key? key, required this.postSummary}) : super(key: key);
+  const FeedDetailPage({Key? key, required this.postId, required this.postTitle}) : super(key: key);
 
   @override
   _FeedDetailPageState createState() => _FeedDetailPageState();
@@ -18,76 +16,76 @@ class FeedDetailPage extends StatefulWidget {
 
 class _FeedDetailPageState extends State<FeedDetailPage> {
   final MainBackendApiService _apiService = MainBackendApiService();
-  // 서버에서 받아올 전체 상세 정보를 담을 Future
-  late Future<FeedPost> _feedDetailFuture;
+  late Future<List<DailyLog>> _dailyLogsFuture;
+
+  bool _isLiked = false;
 
   @override
   void initState() {
     super.initState();
-    // 위젯이 생성될 때, 요약 정보의 ID를 이용해 상세 정보를 요청
-    _feedDetailFuture = _apiService.getFeedDetail(widget.postSummary.id);
+    // API 서비스를 통해 상세 로그 데이터를 가져옵니다.
+    _dailyLogsFuture = _apiService.getFeedDetail(widget.postId);
+  }
+
+  void _toggleLike() {
+    setState(() => _isLiked = !_isLiked);
+    if (_isLiked) {
+      _apiService.likePost(widget.postId, widget.postTitle);
+    } else {
+      // TODO: 좋아요 취소 API 연동
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // 상세 정보가 로딩되기 전에도 제목을 보여줌
-        title: Text(widget.postSummary.title),
+        title: Text(widget.postTitle),
+        actions: [
+          IconButton(
+            icon: Icon(_isLiked ? Icons.bookmark : Icons.bookmark_border),
+            onPressed: _toggleLike,
+          )
+        ],
       ),
-      // FutureBuilder를 사용하여 비동기 데이터를 처리
-      body: FutureBuilder<FeedPost>(
-        future: _feedDetailFuture,
+      // FutureBuilder의 타입을 Future<List<DailyLog>>로 변경
+      body: FutureBuilder<List<DailyLog>>(
+        future: _dailyLogsFuture,
         builder: (context, snapshot) {
-          // 로딩 중일 때
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
-          // 에러 발생 시
           if (snapshot.hasError) {
-            return Center(child: Text("데이터를 불러오는 중 오류가 발생했습니다."));
+            return Center(child: Text("상세 정보를 불러오는 중 오류가 발생했습니다: ${snapshot.error}"));
           }
-          // 데이터가 없을 때 (정상적으론 발생하기 어려움)
-          if (!snapshot.hasData) {
-            return Center(child: Text("게시물 정보를 찾을 수 없습니다."));
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("상세 여행 기록이 없습니다."));
           }
 
-          // 데이터 로딩 성공. 전체 상세 정보가 담긴 post 객체
-          final post = snapshot.data!;
+          final dailyLogs = snapshot.data!;
 
-          // PageView로 일자별 상세 정보 표시 (기존 로직과 유사)
           return PageView.builder(
-            itemCount: post.dailyLogs.length,
+            itemCount: dailyLogs.length,
             itemBuilder: (context, index) {
-              final dailyLog = post.dailyLogs[index];
-              // TODO: DailyLog의 route를 Place 객체 리스트로 변환해야 지도에 표시 가능합니다.
-              final placesForMap = <Place>[];
-
+              final dailyLog = dailyLogs[index];
               return SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TripMapWidget(places: placesForMap),
+                    // 지도에 현재 일자의 장소만 표시
+                    TripMapWidget(places: [dailyLog.location]),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text(dailyLog.date,
-                          style: Theme.of(context).textTheme.headlineSmall),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("여행 경로",
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold)),
-                          // ... (경로 아이템 위젯)
-                          SizedBox(height: 20),
-                          Text("후기",
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold)),
-                          SizedBox(height: 10),
-                          Text(dailyLog.comment),
+                          Text(dailyLog.date, style: Theme.of(context).textTheme.headlineSmall),
+                          const SizedBox(height: 24),
+                          _buildDetailRow(Icons.location_on_outlined, "장소", dailyLog.placeName),
+                          _buildDetailRow(Icons.comment_outlined, "코멘트", dailyLog.comment),
+                          _buildDetailRow(Icons.payment_outlined, "비용", "${dailyLog.cost}원"),
+                          _buildDetailRow(Icons.directions_car_outlined, "교통수단", dailyLog.transportation),
                         ],
                       ),
                     ),
@@ -97,6 +95,22 @@ class _FeedDetailPageState extends State<FeedDetailPage> {
             },
           );
         },
+      ),
+    );
+  }
+
+  // 상세 정보 행을 만드는 헬퍼 위젯
+  Widget _buildDetailRow(IconData icon, String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 20),
+          const SizedBox(width: 12),
+          Text("$title: ", style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(content)),
+        ],
       ),
     );
   }

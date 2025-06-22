@@ -252,6 +252,69 @@ class MainBackendApiService {
     }
   }
 
+  // --- 2. 태그로 피드 검색하기 ---
+  Future<List<FeedPost>> getFeedsByTag({required List<String> tags, int page = 0, int size = 10}) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/post/getPostListByTag'),
+      headers: headers,
+      body: jsonEncode({'page': page, 'size': size, 'tags': tags}),
+    );
+    if (response.statusCode == 200) {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      // 백엔드 응답이 Page가 아닌 List<ArticleDto>이므로 직접 파싱
+      return (body as List)
+          .map((json) => FeedPost.fromJson(json))
+          .toList();
+    }
+    throw Exception('태그 검색 실패: ${response.statusCode}');
+  }
+
+  // --- 상세 피드 정보를 가져오는 함수 수정 ---
+  Future<List<DailyLog>> getFeedDetail(int postId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/post/getPostDetail'),
+      headers: headers,
+      body: jsonEncode({'postId': postId}),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+
+      // 백엔드 ArticleDetailDto의 각 List들을 조합하여 DailyLog 객체 리스트를 생성
+      List<DailyLog> logs = [];
+      final visitDates = List<String>.from(json['visitDateList'] ?? []);
+      final placeNames = List<String>.from(json['placeList'] ?? []);
+      final comments = List<String>.from(json['comment'] ?? []);
+      final costs = List<int>.from(json['cost'] ?? []);
+      final transportations = List<String>.from(json['transportationList'] ?? []);
+      final locations = List<Map<String, dynamic>>.from(json['placeLocationList'] ?? []);
+
+      for (int i = 0; i < visitDates.length; i++) {
+        final placeName = placeNames.length > i ? placeNames[i] : '장소 정보 없음';
+        final locationData = locations.length > i ? locations[i] : {'longitude': 0.0, 'latitude': 0.0};
+
+        logs.add(DailyLog(
+          date: visitDates[i],
+          placeName: placeName,
+          comment: comments.length > i ? comments[i] : '',
+          cost: costs.length > i ? costs[i] : 0,
+          transportation: transportations.length > i ? transportations[i] : 'ETC',
+          location: Place(
+            placeName: placeName,
+            roadAddressName: '', // 상세 DTO에는 도로명 주소 정보가 없음
+            x: (locationData['longitude'] ?? 0.0).toDouble(),
+            y: (locationData['latitude'] ?? 0.0).toDouble(),
+          ),
+        ));
+      }
+      return logs;
+    } else {
+      throw Exception('상세 피드 로딩 실패: ${response.statusCode}');
+    }
+  }
+
   // --- 게시글 등록 기능 ---
   // Flutter UI에서 수집한 데이터를 PublishDto 형식에 맞게 전송
   Future<bool> publishPost(Map<String, dynamic> postData) async {
@@ -273,6 +336,22 @@ class MainBackendApiService {
       print("publishPost 에러: $e");
       return false;
     }
+  }
+
+  // --- 3. 저장한(좋아요 누른) 피드 목록 가져오기 ---
+  Future<List<FeedPost>> getLikedFeeds() async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$_baseUrl/post/likePostList'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      return (body as List)
+          .map((json) => FeedPost.fromJson(json))
+          .toList();
+    }
+    throw Exception('저장된 피드 목록 로딩 실패: ${response.statusCode}');
   }
 
   // --- '좋아요' 기능 ---
@@ -300,30 +379,6 @@ class MainBackendApiService {
     }
   }
 
-  // --- 상세 피드 정보를 가져오는 함수 추가 ---
-  Future<FeedPost> getFeedDetail(int articleId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.post(
-        Uri.parse('$_baseUrl/post/getPostDetailList'),
-        headers: headers,
-        body: jsonEncode({'articleId': articleId}),
-      );
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(utf8.decode(response.bodyBytes));
-        // 상세 정보 DTO를 FeedPost 모델로 변환
-        return FeedPost.fromDetailJson(body);
-      } else {
-        throw Exception(
-            '상세 피드 로딩 실패: ${response.statusCode}, ${response.body}');
-      }
-    } catch (e) {
-      print("getFeedDetail 에러: $e");
-      throw Exception('상세 피드를 불러오는 중 오류가 발생했습니다.');
-    }
-  }
-
   // TODO: 백엔드 API가 준비되면 아래 함수들을 실제 API 호출로 변경
   Future<List<String>> getAvailableTags() async {
     await Future.delayed(Duration(milliseconds: 200));
@@ -332,18 +387,18 @@ class MainBackendApiService {
         .toList();
   }
 
-  Future<void> saveFeed(String feedId) async {
-    print("피드 ID: $feedId 를 서버에 저장 요청 (구현 필요)");
-  }
-
-  Future<void> unsaveFeed(String feedId) async {
-    print("피드 ID: $feedId 를 서버에서 저장 취소 요청 (구현 필요)");
-  }
-
-  Future<List<FeedPost>> getSavedFeeds() async {
-    print("사용자가 저장한 피드 목록 요청 (구현 필요)");
-    return [];
-  }
+  // Future<void> saveFeed(String feedId) async {
+  //   print("피드 ID: $feedId 를 서버에 저장 요청 (구현 필요)");
+  // }
+  //
+  // Future<void> unsaveFeed(String feedId) async {
+  //   print("피드 ID: $feedId 를 서버에서 저장 취소 요청 (구현 필요)");
+  // }
+  //
+  // Future<List<FeedPost>> getSavedFeeds() async {
+  //   print("사용자가 저장한 피드 목록 요청 (구현 필요)");
+  //   return [];
+  // }
 
   Future<List<Place>> getOptimizedRoute(List<Place> finalPlaces) async {
     /*
