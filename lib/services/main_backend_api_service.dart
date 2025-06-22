@@ -211,7 +211,8 @@ import 'package:rectrip/services/auth_service.dart';
 import '../models/place_model.dart'; // 토큰을 가져오기 위해 import
 
 class MainBackendApiService {
-  final String _baseUrl = 'http://13.209.97.201:8081'; // 개발 환경에 맞게 수정
+  //final String _baseUrl = 'http://13.209.97.201:8081';
+  final String _baseUrl = 'http://127.0.0.1:8081';
   final AuthService _authService = AuthService();
 
   // 공통 헤더를 생성하는 함수

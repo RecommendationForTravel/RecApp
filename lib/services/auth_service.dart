@@ -5,7 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
   // TODO: 실제 실행 환경에 맞는 백엔드 서버 주소로 변경해주세요.
-  final String _baseUrl = 'http://13.209.97.201:8081';
+  //final String _baseUrl = 'http://13.209.97.201:8081';
+  final String _baseUrl = 'http://127.0.0.1:8081';
   final _storage = const FlutterSecureStorage();
 
   // 액세스 토큰을 안전하게 저장하는 함수
