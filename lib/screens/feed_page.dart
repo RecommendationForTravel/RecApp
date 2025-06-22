@@ -1,39 +1,79 @@
 // lib/screens/feed_page.dart (수정)
 import 'package:flutter/material.dart';
-import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/feed/feed_detail_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
 
-// --- 데이터 모델 정의 (기존과 동일하나, 가독성을 위해 함께 배치) ---
+// --- 데이터 모델 정의 (fromJson 생성자 추가) ---
 class DailyLog {
   final String date;
   final List<Map<String, String>> route;
   final String comment;
 
   DailyLog({required this.date, required this.route, required this.comment});
+
+  // 상세 정보 JSON으로부터 DailyLog 객체를 생성하는 factory 생성자
+  factory DailyLog.fromJson(Map<String, dynamic> json) {
+    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
+    return DailyLog(
+      date: json['date'] ?? '날짜 정보 없음',
+      route: (json['route'] as List<dynamic>?)
+          ?.map((r) => Map<String, String>.from(r))
+          .toList() ??
+          [],
+      comment: json['comment'] ?? '',
+    );
+  }
 }
 
 class FeedPost {
-  final String id;
+  final int id; // 백엔드 ID 타입이 정수형일 가능성이 높음
   final String userName;
-  final String userLocation;
   final String title;
   final String dateRange;
   final List<String> tags;
-  final List<DailyLog> dailyLogs;
+  List<DailyLog> dailyLogs; // 상세 정보는 나중에 채워질 수 있도록 late가 아닌 일반 변수로
 
   FeedPost({
     required this.id,
     required this.userName,
-    required this.userLocation,
     required this.title,
     required this.dateRange,
     required this.tags,
     required this.dailyLogs,
   });
+
+  // 목록용 JSON(ArticleDto)으로부터 FeedPost 객체를 생성
+  factory FeedPost.fromJson(Map<String, dynamic> json) {
+    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
+    return FeedPost(
+      id: json['articleId'] ?? 0,
+      userName: json['author'] ?? '작성자 정보 없음',
+      title: json['title'] ?? '제목 없음',
+      dateRange:
+      "${json['startDate'] ?? ''} - ${json['endDate'] ?? ''}",
+      tags: List<String>.from(json['tags'] ?? []),
+      dailyLogs: [], // 목록에서는 상세 정보가 없으므로 빈 리스트로 초기화
+    );
+  }
+
+  // 상세정보용 JSON(ArticleDetailDto)으로부터 FeedPost 객체를 생성
+  factory FeedPost.fromDetailJson(Map<String, dynamic> json) {
+    // TODO: 백엔드 DTO의 실제 필드명 확인 및 매핑 필요
+    return FeedPost(
+      id: json['articleId'] ?? 0,
+      userName: json['author'] ?? '작성자 정보 없음',
+      title: json['title'] ?? '제목 없음',
+      dateRange:
+      "${json['startDate'] ?? ''} - ${json['endDate'] ?? ''}",
+      tags: List<String>.from(json['tags'] ?? []),
+      dailyLogs: (json['dailyLogs'] as List<dynamic>?)
+          ?.map((logJson) => DailyLog.fromJson(logJson))
+          .toList() ??
+          [],
+    );
+  }
 }
 // --- 데이터 모델 정의 끝 ---
-
 
 class FeedPage extends StatefulWidget {
   @override
@@ -44,25 +84,18 @@ class _FeedPageState extends State<FeedPage> {
   final MainBackendApiService _apiService = MainBackendApiService();
   final ScrollController _scrollController = ScrollController();
 
-  // 상태 변수들
   final List<FeedPost> _posts = [];
-  int _currentPage = 1;
+  int _currentPage = 0; // Spring Page는 0부터 시작
   bool _isLoading = false;
   bool _hasMore = true;
-  String? _selectedTag;
 
   @override
   void initState() {
     super.initState();
-    // 첫 데이터 로드
     _fetchFeeds();
-
-    // 스크롤 리스너 추가
     _scrollController.addListener(() {
-      // 스크롤이 끝에 도달했고, 로딩 중이 아니며, 더 가져올 데이터가 있을 때
       if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
-          !_isLoading &&
-          _hasMore) {
+          !_isLoading && _hasMore) {
         _fetchFeeds();
       }
     });
@@ -74,94 +107,46 @@ class _FeedPageState extends State<FeedPage> {
     super.dispose();
   }
 
-  // 서버에서 피드를 가져오는 함수
   Future<void> _fetchFeeds() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
 
     try {
-      final newPosts = await _apiService.getFeeds(page: _currentPage, tag: _selectedTag);
+      final newPosts = await _apiService.getFeeds(page: _currentPage);
       setState(() {
-        _posts.addAll(newPosts);
-        _currentPage++;
-        _isLoading = false;
-        // 새로 불러온 데이터가 요청한 limit보다 적으면 더 이상 데이터가 없는 것으로 간주
-        if (newPosts.length < 5) {
+        if (newPosts.isNotEmpty) {
+          _posts.addAll(newPosts);
+          _currentPage++;
+        } else {
           _hasMore = false;
         }
+        _isLoading = false;
       });
     } catch (e) {
-      // 에러 처리
       setState(() => _isLoading = false);
-      print("피드 로딩 중 에러: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
   }
 
-  // 새로고침 또는 태그 필터링 시 상태를 초기화하고 다시 로드하는 함수
-  Future<void> _resetAndFetchFeeds({String? tag}) async {
+  Future<void> _refresh() async {
     setState(() {
       _posts.clear();
-      _currentPage = 1;
+      _currentPage = 0;
       _hasMore = true;
-      _selectedTag = tag;
     });
     await _fetchFeeds();
-  }
-
-  // 태그 필터 모달을 보여주는 함수
-  void _showTagFilterModal() async {
-    final tags = await _apiService.getAvailableTags();
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          child: Wrap(
-            spacing: 8.0,
-            runSpacing: 4.0,
-            children: [
-              // 전체 보기(필터 해제) 버튼
-              ActionChip(
-                label: Text("전체 보기"),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _resetAndFetchFeeds(tag: null);
-                },
-              ),
-              // 각 태그별 필터 버튼
-              ...tags.map((tag) => ActionChip(
-                label: Text(tag),
-                backgroundColor: _selectedTag == tag ? Colors.teal : Colors.grey[200],
-                labelStyle: TextStyle(color: _selectedTag == tag ? Colors.white : Colors.black),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _resetAndFetchFeeds(tag: tag);
-                },
-              )),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedTag ?? "전체 피드"),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed: _showTagFilterModal,
-          ),
-        ],
-        backgroundColor: Colors.white,
-        elevation: 1,
+        title: Text("피드"),
       ),
       body: RefreshIndicator(
-        onRefresh: () => _resetAndFetchFeeds(tag: _selectedTag),
+        onRefresh: _refresh,
         child: _posts.isEmpty && _isLoading
             ? Center(child: CircularProgressIndicator())
             : _posts.isEmpty && !_isLoading
@@ -173,7 +158,10 @@ class _FeedPageState extends State<FeedPage> {
             if (index < _posts.length) {
               final post = _posts[index];
               return GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FeedDetailPage(post: post))),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FeedDetailPage(postSummary: post)),
+                ),
                 child: FeedItemWidget(post: post),
               );
             } else {
