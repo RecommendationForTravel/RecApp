@@ -410,18 +410,28 @@ class MainBackendApiService {
     }
   }
 
-  // Future<void> saveFeed(String feedId) async {
-  //   print("피드 ID: $feedId 를 서버에 저장 요청 (구현 필요)");
-  // }
-  //
-  // Future<void> unsaveFeed(String feedId) async {
-  //   print("피드 ID: $feedId 를 서버에서 저장 취소 요청 (구현 필요)");
-  // }
-  //
-  // Future<List<FeedPost>> getSavedFeeds() async {
-  //   print("사용자가 저장한 피드 목록 요청 (구현 필요)");
-  //   return [];
-  // }
+  // --- 내가 쓴 게시글 목록을 가져오는 함수 추가 ---
+  Future<List<FeedPost>> getMyPosts() async {
+    try {
+      final headers = await _getHeaders();
+      // 백엔드 명세에 따라 POST 방식으로 /myposts 호출
+      final response = await http.post(
+        Uri.parse('$_baseUrl/post/myposts'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> body = jsonDecode(utf8.decode(response.bodyBytes));
+        // 응답받은 List<ArticleDto>를 List<FeedPost>로 변환
+        return body.map((json) => FeedPost.fromJson(json)).toList();
+      } else {
+        throw Exception('내가 쓴 글 목록 로딩 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("getMyPosts 에러: $e");
+      throw Exception('내가 쓴 글 목록을 불러오는 중 오류가 발생했습니다.');
+    }
+  }
 
   Future<List<Place>> getOptimizedRoute(List<Place> finalPlaces) async {
     /*

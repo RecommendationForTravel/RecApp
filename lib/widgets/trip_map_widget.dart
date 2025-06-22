@@ -43,7 +43,7 @@ class _TripMapWidgetState extends State<TripMapWidget> {
         options: NaverMapViewOptions(
           initialCameraPosition: NCameraPosition(
             target: widget.places.first.latLng,
-            zoom: 12,
+            zoom: 16, // ★ 추천: 15~17 (경복궁 등 실제 장소가 잘 보임)
           ),
         ),
         onMapReady: (controller) {
@@ -55,6 +55,7 @@ class _TripMapWidgetState extends State<TripMapWidget> {
         },
       ),
     );
+
   }
 
   @override
@@ -115,7 +116,10 @@ class _TripMapWidgetState extends State<TripMapWidget> {
       );
     } else {
       _mapController!.updateCamera(
-        NCameraUpdate.scrollAndZoomTo(target: places.first.latLng, zoom: 14),
+        NCameraUpdate.scrollAndZoomTo(
+          target: places.first.latLng,
+          zoom: 16, // ★ 여기서도 동일하게 15~17 권장
+        ),
       );
     }
   }

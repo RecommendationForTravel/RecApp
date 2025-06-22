@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'login_page.dart';
+import 'my_posts_page.dart';
 
 class MyPageScreen extends StatelessWidget {
 
@@ -58,10 +59,16 @@ class MyPageScreen extends StatelessWidget {
           //   onTap: () => _navigateToPlaceholder(context, '내 정보 수정'),
           // ),
           ListTile(
-            leading: Icon(Icons.article_outlined, color: Colors.teal),
-            title: Text('내가 쓴 피드'),
-            trailing: Icon(Icons.chevron_right),
-            onTap: () => _navigateToPlaceholder(context, '내가 쓴 피드'),
+            leading: const Icon(Icons.article_outlined, color: Colors.teal),
+            title: const Text('내가 쓴 피드'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              // PlaceholderScreen 대신 MyPostsPage로 이동하도록 변경
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyPostsPage()),
+              );
+            },
           ),
           // ListTile(
           //   leading: Icon(Icons.history_outlined, color: Colors.teal),

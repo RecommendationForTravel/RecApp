@@ -19,16 +19,12 @@ void main() async {
   // 국제화(날짜 형식 등)를 위해 초기화합니다.
   await initializeDateFormatting('ko_KR', null);
 
-  // --- 지도 SDK 초기화 코드 수정 ---
-  // runApp()을 호출하기 전에 반드시 SDK를 초기화해야 합니다.
-  await NaverMapSdk.instance.initialize(
-    clientId: 'aer59x7hpo', // 네이버 클라우드 플랫폼에서 발급받은 클라이언트 ID를 입력하세요.
+  await FlutterNaverMap().init(
+    clientId: 'aer59x7hpo',
     onAuthFailed: (ex) {
-      // 인증 실패 시 로그를 출력합니다. (디버깅용)
       print("********* 네이버맵 인증 오류 : $ex *********");
     },
   );
-  // --- 초기화 코드 끝 ---
 
   runApp(
     ChangeNotifierProvider(
