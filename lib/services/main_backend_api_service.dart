@@ -379,12 +379,35 @@ class MainBackendApiService {
     }
   }
 
-  // TODO: 백엔드 API가 준비되면 아래 함수들을 실제 API 호출로 변경
-  Future<List<String>> getAvailableTags() async {
-    await Future.delayed(Duration(milliseconds: 200));
-    return ['#힐링', '#바다', '#커플', '#낭만', '#맛집', '#도시', '#가족', '#자연']
-        .toSet()
-        .toList();
+  //태그 목록 가져오기
+  Future<List<String>> getTagList() async {
+    try {
+      final headers = await _getHeaders();
+      // 이 API는 인증이 필요 없을 수 있으므로, 기본 헤더만 사용합니다.
+      final response = await http.post(
+        Uri.parse('$_baseUrl/post/getTagList'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> body = jsonDecode(utf8.decode(response.bodyBytes));
+
+        // --- 핵심 수정 부분: null 값을 안전하게 처리 ---
+        // 1. body 리스트의 각 요소를 순회합니다.
+        // 2. 각 요소가 null이 아니면 toString()으로 문자열로 변환합니다.
+        // 3. null인 요소는 이 과정에서 제외됩니다.
+        return body
+            .where((tag) => tag != null)
+            .map((tag) => tag.toString())
+            .toList();
+      } else {
+        throw Exception('태그 목록 로딩 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("getTagList 에러: $e");
+      // API 호출 실패 시, 비상용 기본 태그 목록 반환
+      return ['등산', '산책', '가족단위', '데이트코스', '자연'];
+    }
   }
 
   // Future<void> saveFeed(String feedId) async {

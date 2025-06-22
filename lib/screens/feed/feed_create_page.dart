@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/recommendation/place_search_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
-import 'package:rectrip/services/tag_service.dart';
 
 // 일자별 폼 데이터를 관리하기 위한 UI용 클래스
 class DailyLogForm {
@@ -38,11 +37,14 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
   final Set<String> _selectedPostTags = {};
   List<String> _availableTags = [];
 
-  final List<String> _transportationOptions = ['버스', '지하철', '택시', '자차운전', '도보', '자전거'];
+  // 백엔드 enum과 동일한 목록
+  final List<String> _transportationOptions = [
+    'BUS', 'SUBWAY', 'TAXI', 'CAR', 'WALK', 'BICYCLE'
+  ];
   final List<String> _placeCategoryOptions = [
-    '카페', '음식점', '숙박', '관광명소', '공원',
-    '박물관', '쇼핑', '놀거리', '역사', '바다',
-    '산', '절', '기타'
+    'CAFE', 'RESTAURANT', 'ACCOMMODATION', 'TOURIST_ATTRACTION', 'PARK',
+    'MUSEUM', 'SHOPPING', 'ENTERTAINMENT', 'HISTORICAL_SITE', 'BEACH',
+    'MOUNTAIN', 'TEMPLE', 'ETC'
   ];
 
   @override
@@ -52,7 +54,7 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
   }
 
   Future<void> _loadAvailableTags() async {
-    final tags = await TagService.loadTags();
+    final tags = await _apiService.getTagList();
     if (mounted) {
       setState(() => _availableTags = tags);
     }

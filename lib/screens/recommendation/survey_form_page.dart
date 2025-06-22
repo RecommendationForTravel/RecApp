@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:rectrip/providers/recommendation_provider.dart';
 import 'package:rectrip/screens/recommendation/recommendation_result_page.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../../services/tag_service.dart';
+import '../../services/main_backend_api_service.dart';
 import 'recommendation_place_selection_page.dart';
 
 class SurveyFormPage extends StatefulWidget {
@@ -41,8 +41,10 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
     _loadAvailableTags();
   }
 
+  final _apiService = MainBackendApiService();
+
   Future<void> _loadAvailableTags() async {
-    final tags = await TagService.loadTags();
+    final tags = await _apiService.getTagList();
     setState(() {
       _availableTags = tags;
     });

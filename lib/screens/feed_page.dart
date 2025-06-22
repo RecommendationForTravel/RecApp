@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:rectrip/models/place_model.dart';
 import 'package:rectrip/screens/feed/feed_detail_page.dart';
 import 'package:rectrip/services/main_backend_api_service.dart';
-import 'package:intl/intl.dart';
-
-import '../services/tag_service.dart';
 
 // --- 데이터 모델 정의 (백엔드 DTO에 맞게 수정) ---
 class DailyLog {
@@ -166,57 +163,61 @@ class _FeedPageState extends State<FeedPage> {
 
 // --- 태그 필터 모달 표시 함수 수정 ---
   void _showTagFilterModal() async {
-    // TagService를 통해 CSV 파일에서 태그 목록을 비동기적으로 불러옵니다.
-    final allTags = await TagService.loadTags();
+    // MainBackendApiService를 통해 서버에서 태그 목록을 비동기적으로 불러옵니다.
+    final allTags = await _apiService.getTagList();
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // 내용이 많아도 스크롤 가능하도록 설정
       builder: (context) {
         return StatefulBuilder(builder: (context, setModalState) {
-          return Container(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("태그로 검색", style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Wrap(
-                      spacing: 8.0,
-                      children: allTags.map((tag) {
-                        // 현재 선택된 태그인지 확인
-                        final isSelected = _selectedTags.contains(tag);
-                        return FilterChip(
-                          label: Text(tag),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            // 단일 선택 로직: 하나를 선택하면 나머지는 선택 해제됨
-                            setModalState(() {
-                              if (selected) {
-                                _selectedTags = [tag];
-                              } else {
-                                _selectedTags = [];
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.6, // 모달의 초기 높이
+            maxChildSize: 0.9,     // 최대 높이
+            builder: (_, scrollController) {
+              return Container(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("태그로 검색", style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        child: Wrap(
+                          spacing: 8.0,
+                          children: allTags.map((tag) {
+                            final isSelected = _selectedTags.contains(tag);
+                            return FilterChip(
+                              label: Text(tag),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                // 단일 선택 로직
+                                setModalState(() {
+                                  _selectedTags = selected ? [tag] : [];
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ),
-                  ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _refresh(); // 선택된 태그로 새로고침
+                        },
+                        child: const Text('선택 완료'),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _refresh(); // 선택된 태그로 새로고침
-                    },
-                    child: const Text('선택 완료'),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           );
         });
       },
