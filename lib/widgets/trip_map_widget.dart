@@ -45,6 +45,7 @@ class _TripMapWidgetState extends State<TripMapWidget> {
             target: widget.places.first.latLng,
             zoom: 16, // ★ 추천: 15~17 (경복궁 등 실제 장소가 잘 보임)
           ),
+          mapType: NMapType.basic,
         ),
         onMapReady: (controller) {
           _mapController = controller;
