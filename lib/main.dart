@@ -43,10 +43,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '어디가담', // 앱의 공식 이름으로 변경
+      // --- 테마 설정 수정 ---
       theme: ThemeData(
+        // 앱의 기본 색상 설정
         primarySwatch: Colors.teal,
-        // TODO: 3단계에서 폰트 추가 후, 아래 주석을 해제하여 앱 전체에 폰트 적용
-        // fontFamily: 'GmarketSans',
+        // 앱 전체에 Pretendard 폰트를 기본으로 적용합니다.
+        fontFamily: 'Pretendard',
+
+        // (선택) 더 상세한 텍스트 스타일을 원할 경우 TextTheme을 설정할 수 있습니다.
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w500),
+          bodyMedium: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w400),
+          labelLarge: TextStyle(fontFamily: 'Pretendard', fontWeight: FontWeight.w500),
+        ),
       ),
       // 시작 페이지를 LoginPage에서 SplashScreen으로 변경
       home: SplashScreen(),

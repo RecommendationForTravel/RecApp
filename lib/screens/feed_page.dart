@@ -227,7 +227,11 @@ class _FeedPageState extends State<FeedPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("피드"), actions: [
+      appBar: AppBar(
+        title: Text('피드', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 1,
+       actions: [
         IconButton(icon: Icon(Icons.search), onPressed: _showTagFilterModal)
       ]),
       body: RefreshIndicator(

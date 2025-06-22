@@ -13,7 +13,7 @@ class SurveyStartPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('AI 여행 추천'),
+        title: Text('AI 여행 추천', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 1,
       ),

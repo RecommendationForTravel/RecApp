@@ -31,7 +31,11 @@ class _SavedTripsPageState extends State<SavedTripsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("저장한 여행기")),
+      appBar: AppBar(
+        title: Text('저장한 여행기', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 1,
+      ),
       body: RefreshIndicator(
         onRefresh: () async => _loadSavedFeeds(),
         child: FutureBuilder<List<FeedPost>>(

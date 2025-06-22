@@ -51,24 +51,24 @@ class MyPageScreen extends StatelessWidget {
             ),
           ),
           Divider(),
-          ListTile(
-            leading: Icon(Icons.edit_outlined, color: Colors.teal),
-            title: Text('내 정보 수정'),
-            trailing: Icon(Icons.chevron_right),
-            onTap: () => _navigateToPlaceholder(context, '내 정보 수정'),
-          ),
+          // ListTile(
+          //   leading: Icon(Icons.edit_outlined, color: Colors.teal),
+          //   title: Text('내 정보 수정'),
+          //   trailing: Icon(Icons.chevron_right),
+          //   onTap: () => _navigateToPlaceholder(context, '내 정보 수정'),
+          // ),
           ListTile(
             leading: Icon(Icons.article_outlined, color: Colors.teal),
             title: Text('내가 쓴 피드'),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _navigateToPlaceholder(context, '내가 쓴 피드'),
           ),
-          ListTile(
-            leading: Icon(Icons.history_outlined, color: Colors.teal),
-            title: Text('추천 받은 기록'),
-            trailing: Icon(Icons.chevron_right),
-            onTap: () => _navigateToPlaceholder(context, '추천 받은 기록'),
-          ),
+          // ListTile(
+          //   leading: Icon(Icons.history_outlined, color: Colors.teal),
+          //   title: Text('추천 받은 기록'),
+          //   trailing: Icon(Icons.chevron_right),
+          //   onTap: () => _navigateToPlaceholder(context, '추천 받은 기록'),
+          // ),
           Divider(),
           ListTile(
             leading: Icon(Icons.logout, color: Colors.redAccent),

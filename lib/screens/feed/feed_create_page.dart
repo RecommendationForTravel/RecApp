@@ -220,7 +220,9 @@ class _FeedCreatePageState extends State<FeedCreatePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("새 여행기 작성"),
+        title: Text('새 여행기 작성', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 1,
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _submitPost,

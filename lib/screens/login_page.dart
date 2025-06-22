@@ -63,8 +63,8 @@ class _LoginPageState extends State<LoginPage> {
               TextFormField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: '이메일',
-                  hintText: '이메일 주소를 입력하세요',
+                  labelText: '닉네임',
+                  hintText: '닉네임을 입력하세요',
                   prefixIcon: Icon(Icons.email_outlined),
                 ),
                 // keyboardType: TextInputType.emailAddress,
