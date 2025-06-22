@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rectrip/services/auth_service.dart';
 
 class SignUpPage extends StatefulWidget {
   @override
@@ -7,109 +8,160 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
-  TextEditingController _idController = TextEditingController();
-  TextEditingController _passwordController = TextEditingController();
-  TextEditingController _passwordConfirmController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _passwordConfirmController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _nicknameController = TextEditingController();
+  final _authService = AuthService();
+
+  bool _isLoading = false;
+
+  void _handleSignUp() async {
+    // 모든 validation을 통과하면
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+
+      // AuthService를 통해 서버에 회원가입 요청
+      final success = await _authService.signup(
+        email: _emailController.text,
+        password: _passwordController.text,
+        username: _usernameController.text,
+        nickname: _nicknameController.text,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (mounted) { // 위젯이 여전히 화면에 있는지 확인
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('회원가입이 완료되었습니다! 로그인해주세요.')),
+          );
+          Navigator.pop(context); // 회원가입 성공 시 로그인 화면으로 복귀
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('회원가입에 실패했습니다. 입력 정보를 확인해주세요.')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _passwordConfirmController.dispose();
+    _usernameController.dispose();
+    _nicknameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('회원가입'),
-        backgroundColor: Colors.transparent, // 앱바 배경 투명
-        elevation: 0, // 앱바 그림자 제거
-        iconTheme: IconThemeData(color: Colors.black), // 뒤로가기 버튼 색상
-        titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold), // 제목 스타일
+        title: const Text('회원가입'),
       ),
-      body: SingleChildScrollView( // 내용이 길어질 경우 스크롤 가능하도록
-        padding: EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              SizedBox(height: 40),
-              Text(
-                '회원가입',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.teal),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 40),
+              // 사용자 이름 (실명)
               TextFormField(
-                controller: _idController,
-                decoration: InputDecoration(
-                  labelText: '아이디',
-                  hintText: '아이디를 입력하세요',
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: '사용자 이름',
+                  hintText: '실명을 입력하세요',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '아이디를 입력해주세요.';
+                    return '사용자 이름을 입력해주세요.';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  // 아이디 중복 확인 로직
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('아이디 중복 확인 기능 (구현 필요)')),
-                  );
-                },
-                child: Text('아이디 중복 확인'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                  foregroundColor: Colors.black54,
+              const SizedBox(height: 16),
+
+              // 닉네임
+              TextFormField(
+                controller: _nicknameController,
+                decoration: const InputDecoration(
+                  labelText: '닉네임',
+                  hintText: '앱에서 사용할 별명을 입력하세요',
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return '닉네임을 입력해주세요.';
+                  }
+                  return null;
+                },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // 이메일
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: '이메일 (아이디)',
+                  hintText: '이메일 주소를 입력하세요',
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || !value.contains('@')) {
+                    return '올바른 이메일 형식을 입력해주세요.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              // TODO: 이메일 중복 확인 기능 구현
+              // OutlinedButton(
+              //   onPressed: _checkEmailDuplicate,
+              //   child: const Text('이메일 중복 확인'),
+              // ),
+              const SizedBox(height: 16),
+
+              // 비밀번호
               TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: '비밀번호',
-                  hintText: '비밀번호를 입력하세요',
-                ),
+                decoration: const InputDecoration(labelText: '비밀번호'),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호를 입력해주세요.';
+                  if (value == null || value.length < 6) {
+                    return '비밀번호는 6자 이상이어야 합니다.';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
+
+              // 비밀번호 확인
               TextFormField(
                 controller: _passwordConfirmController,
-                decoration: InputDecoration(
-                  labelText: '비밀번호 확인',
-                  hintText: '비밀번호를 다시 입력하세요',
-                ),
+                decoration: const InputDecoration(labelText: '비밀번호 확인'),
                 obscureText: true,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '비밀번호 확인을 입력해주세요.';
-                  }
                   if (value != _passwordController.text) {
                     return '비밀번호가 일치하지 않습니다.';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 40),
-              ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // 회원가입 로직
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('회원가입 처리중... (구현 필요)')),
-                      );
-                      Navigator.pop(context); // 회원가입 성공 후 이전 화면으로
-                    }
-                  },
-                  child: Text('회원가입'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
-                  )
+              const SizedBox(height: 40),
+
+              // 회원가입 버튼
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                onPressed: _handleSignUp,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                ),
+                child: const Text('회원가입'),
               ),
             ],
           ),

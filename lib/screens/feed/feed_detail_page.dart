@@ -1,113 +1,100 @@
 // lib/screens/feed/feed_detail_page.dart (수정)
 import 'package:flutter/material.dart';
-import 'package:rectrip/screens/feed_page.dart';
+import 'package:rectrip/screens/feed_page.dart'; // FeedPost, DailyLog 모델
+import 'package:rectrip/services/main_backend_api_service.dart';
 import 'package:rectrip/widgets/trip_map_widget.dart';
 
-import '../../models/place_model.dart'; // 지도 위젯 import
+import '../../models/place_model.dart'; // 지도 위젯
 
 class FeedDetailPage extends StatefulWidget {
-  final FeedPost post;
-  const FeedDetailPage({Key? key, required this.post}) : super(key: key);
+  // 목록에서 받은 요약 정보
+  final FeedPost postSummary;
+
+  const FeedDetailPage({Key? key, required this.postSummary}) : super(key: key);
+
   @override
   _FeedDetailPageState createState() => _FeedDetailPageState();
 }
 
 class _FeedDetailPageState extends State<FeedDetailPage> {
-  late List<bool> _isSaved;
-  final PageController _pageController = PageController();
-  final ValueNotifier<int> _pageNotifier = ValueNotifier<int>(0);
+  final MainBackendApiService _apiService = MainBackendApiService();
+  // 서버에서 받아올 전체 상세 정보를 담을 Future
+  late Future<FeedPost> _feedDetailFuture;
 
   @override
   void initState() {
     super.initState();
-    _isSaved = List.filled(widget.post.dailyLogs.length, false);
-    _pageController.addListener(() {
-      if (_pageController.page?.round() != _pageNotifier.value) {
-        _pageNotifier.value = _pageController.page!.round();
-      }
-    });
-  }
-
-  // ... (기존 _toggleSave, dispose 함수는 동일)
-  @override
-  void dispose() {
-    _pageController.removeListener(() {});
-    _pageController.dispose();
-    _pageNotifier.dispose();
-    super.dispose();
-  }
-
-  void _toggleSave(int index) {
-    setState(() {
-      _isSaved[index] = !_isSaved[index];
-    });
-    // TODO: 실제 백엔드에 일자별 저장/삭제 API를 호출하는 로직 추가
-    // 예: MainBackendApiService().saveDailyTrip(widget.post.id, widget.post.dailyLogs[index].date);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            '${widget.post.dailyLogs[index].date} 일정이 ${_isSaved[index] ? "저장" : "취소"}되었습니다.'
-        ),
-        duration: Duration(seconds: 1),
-      ),
-    );
+    // 위젯이 생성될 때, 요약 정보의 ID를 이용해 상세 정보를 요청
+    _feedDetailFuture = _apiService.getFeedDetail(widget.postSummary.id);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.post.title),
-        actions: [
-          // ValueListenableBuilder를 사용하여 페이지 변경에 따라 아이콘을 업데이트
-          ValueListenableBuilder<int>(
-            valueListenable: _pageNotifier,
-            builder: (context, pageIndex, _) {
-              return IconButton(
-                icon: Icon(
-                  _isSaved[pageIndex] ? Icons.bookmark : Icons.bookmark_border,
-                  color: _isSaved[pageIndex] ? Colors.amber : null,
+        // 상세 정보가 로딩되기 전에도 제목을 보여줌
+        title: Text(widget.postSummary.title),
+      ),
+      // FutureBuilder를 사용하여 비동기 데이터를 처리
+      body: FutureBuilder<FeedPost>(
+        future: _feedDetailFuture,
+        builder: (context, snapshot) {
+          // 로딩 중일 때
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+          // 에러 발생 시
+          if (snapshot.hasError) {
+            return Center(child: Text("데이터를 불러오는 중 오류가 발생했습니다."));
+          }
+          // 데이터가 없을 때 (정상적으론 발생하기 어려움)
+          if (!snapshot.hasData) {
+            return Center(child: Text("게시물 정보를 찾을 수 없습니다."));
+          }
+
+          // 데이터 로딩 성공. 전체 상세 정보가 담긴 post 객체
+          final post = snapshot.data!;
+
+          // PageView로 일자별 상세 정보 표시 (기존 로직과 유사)
+          return PageView.builder(
+            itemCount: post.dailyLogs.length,
+            itemBuilder: (context, index) {
+              final dailyLog = post.dailyLogs[index];
+              // TODO: DailyLog의 route를 Place 객체 리스트로 변환해야 지도에 표시 가능합니다.
+              final placesForMap = <Place>[];
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TripMapWidget(places: placesForMap),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(dailyLog.date,
+                          style: Theme.of(context).textTheme.headlineSmall),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("여행 경로",
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                          // ... (경로 아이템 위젯)
+                          SizedBox(height: 20),
+                          Text("후기",
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 10),
+                          Text(dailyLog.comment),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                // 현재 페이지의 인덱스를 _toggleSave 함수에 전달
-                onPressed: () => _toggleSave(pageIndex),
               );
             },
-          ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.post.dailyLogs.length,
-        itemBuilder: (context, index) {
-          final dailyLog = widget.post.dailyLogs[index];
-          // TODO: DailyLog의 route(List<Map<String,String>>)를 List<Place>로 변환해야 지도에 표시 가능합니다.
-          final placesForMap = <Place>[];
-
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TripMapWidget(places: placesForMap),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(dailyLog.date, style: Theme.of(context).textTheme.headlineSmall),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("여행 경로", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      // ... (경로 아이템 위젯)
-                      SizedBox(height: 20),
-                      Text("후기", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 10),
-                      Text(dailyLog.comment),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           );
         },
       ),

@@ -19,6 +19,9 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
 
+  // CalendarFormat을 .month로 고정합니다.
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+
   final List<String> _seoulDistricts = [
     '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구',
     '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구',
@@ -27,15 +30,21 @@ class _SurveyFormPageState extends State<SurveyFormPage> {
 
   final List<String> _themes = ['친구와 함께', '가족과 함께', '연인과 함께', '혼자서'];
 
+  // 날짜 선택 로직 수정
   void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
     setState(() {
-      _rangeStart = start;
-      _rangeEnd = end;
       _focusedDay = focusedDay;
+      _rangeStart = start;
+      // 사용자가 시작일만 선택한 경우(아직 범위를 드래그 중인 경우), 종료일은 null일 수 있습니다.
+      _rangeEnd = end;
     });
   }
 
   void _submitSurvey() {
+    // 시작일만 선택된 경우, 종료일을 시작일과 동일하게 설정하여 하루 여행으로 처리합니다.
+    final finalStartDate = _rangeStart;
+    final finalEndDate = _rangeEnd ?? _rangeStart;
+
     if (_selectedLocation == null || _rangeStart == null || _rangeEnd == null || _selectedTheme == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('모든 항목을 선택해주세요.')),

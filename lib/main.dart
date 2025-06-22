@@ -10,6 +10,7 @@ import 'package:rectrip/screens/my_page.dart';
 import 'package:rectrip/screens/feed_page.dart';
 import 'package:rectrip/screens/recommendation/survey_start_page.dart';
 import 'package:rectrip/screens/saved_trips_page.dart';
+import 'package:rectrip/screens/splash_screen.dart';
 
 void main() async {
   // Flutter 엔진과 위젯 바인딩을 보장합니다.
@@ -41,11 +42,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '여행 앱',
+      title: '어디가담', // 앱의 공식 이름으로 변경
       theme: ThemeData(
-        // ... (기존 테마 설정과 동일)
+        primarySwatch: Colors.teal,
+        // TODO: 3단계에서 폰트 추가 후, 아래 주석을 해제하여 앱 전체에 폰트 적용
+        // fontFamily: 'GmarketSans',
       ),
-      home: LoginPage(),
+      // 시작 페이지를 LoginPage에서 SplashScreen으로 변경
+      home: SplashScreen(),
     );
   }
 }
